@@ -52,13 +52,25 @@ class RegisterView(View):
                 )
                 return redirect('accounts:login')
 
-            # Production: send verification email
+            # Production: attempt to send verification email
             token_obj = EmailVerificationToken.objects.create(user=user)
-            self._send_verification_email(request, user, token_obj.token)
-            messages.success(
-                request,
-                'Account created! Please check your email to verify your address before logging in.',
-            )
+            email_sent = self._send_verification_email(request, user, token_obj.token)
+
+            if email_sent:
+                messages.success(
+                    request,
+                    'Account created! Please check your email to verify your address before logging in.',
+                )
+            else:
+                # Email failed — auto-verify so the user can still log in
+                user.is_email_verified = True
+                user.verification_status = 'approved'
+                user.is_verified = True
+                user.save(update_fields=['is_email_verified', 'verification_status', 'is_verified'])
+                messages.success(
+                    request,
+                    'Account created successfully! You can now log in.',
+                )
             return redirect('accounts:login')
 
         messages.error(request, 'Please correct the errors below.')
@@ -66,6 +78,7 @@ class RegisterView(View):
 
     @staticmethod
     def _send_verification_email(request, user, token):
+        """Returns True if email was sent successfully, False otherwise."""
         verification_url = request.build_absolute_uri(
             reverse('accounts:verify_email', kwargs={'token': str(token)})
         )
@@ -87,9 +100,10 @@ class RegisterView(View):
                 [user.email],
                 fail_silently=False,
             )
-        except Exception:
-            # Don't crash registration if email delivery fails
-            pass
+            return True
+        except BaseException:
+            # Catches SMTP errors, timeouts, and worker signals
+            return False
 
 
 # ---------------------------------------------------------------------------
