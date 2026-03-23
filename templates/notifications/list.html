@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% block title %}Notifications – Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h2 class="fw-800 mb-0"><i class="bi bi-bell me-2 text-primary"></i>Notifications</h2>
+          {% if unread_count %}
+            <p class="text-muted mb-0 small">{{ unread_count }} unread</p>
+          {% endif %}
+        </div>
+        {% if notifications %}
+          <form method="post" action="{% url 'notifications:mark_all_read' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-primary btn-sm fw-600">
+              <i class="bi bi-check-all me-1"></i>Mark All Read
+            </button>
+          </form>
+        {% endif %}
+      </div>
+
+      {% if notifications %}
+        <div class="d-flex flex-column gap-2">
+          {% for notif in notifications %}
+            <a href="{{ notif.action_url|default:'#' }}"
+               class="text-decoration-none"
+               {% if not notif.is_read %}
+               data-mark-read-url="{% url 'notifications:mark_read' notif.pk %}"
+               onclick="markRead(this, event)"
+               {% endif %}>
+              <div class="card border-0 shadow-sm notification-item {% if not notif.is_read %}unread{% endif %} p-3">
+                <div class="d-flex align-items-start gap-3">
+                  <!-- Icon -->
+                  <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0
+                              {% if notif.notification_type == 'message' %}bg-primary-subtle text-primary
+                              {% elif notif.notification_type == 'booking' %}bg-success-subtle text-success
+                              {% elif notif.notification_type == 'review' %}bg-warning-subtle text-warning
+                              {% else %}bg-secondary-subtle text-secondary{% endif %}"
+                       style="width:40px;height:40px;font-size:1.1rem;">
+                    {% if notif.notification_type == 'message' %}
+                      <i class="bi bi-chat-dots-fill"></i>
+                    {% elif notif.notification_type == 'booking' %}
+                      <i class="bi bi-calendar-check-fill"></i>
+                    {% elif notif.notification_type == 'review' %}
+                      <i class="bi bi-star-fill"></i>
+                    {% elif notif.notification_type == 'listing' %}
+                      <i class="bi bi-bag-fill"></i>
+                    {% else %}
+                      <i class="bi bi-bell-fill"></i>
+                    {% endif %}
+                  </div>
+
+                  <!-- Content -->
+                  <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                      <p class="mb-1 text-dark {% if not notif.is_read %}fw-600{% endif %}">
+                        {{ notif.message }}
+                      </p>
+                      {% if not notif.is_read %}
+                        <span class="bg-primary rounded-circle flex-shrink-0" style="width:8px;height:8px;margin-top:6px;"></span>
+                      {% endif %}
+                    </div>
+                    <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ notif.created_at|timesince }} ago</small>
+                  </div>
+                </div>
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+
+        {% include 'partials/pagination.html' with page_obj=notifications request=request %}
+
+      {% else %}
+        <div class="card border-0 shadow-sm">
+          {% include 'partials/empty_state.html' with icon="bi-bell-slash" title="No notifications" message="You're all caught up! Notifications will appear here." %}
+        </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function markRead(el, e) {
+    const url = el.dataset.markReadUrl;
+    if (url) {
+      // Fire-and-forget mark as read
+      fetch(url, {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'}
+      });
+    }
+  }
+</script>
+{% endblock %}

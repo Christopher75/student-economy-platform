@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% block title %}My Bookings – Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="fw-800 mb-0"><i class="bi bi-calendar-check me-2 text-primary"></i>My Bookings</h2>
+      <p class="text-muted mb-0 small">Manage your skill session bookings</p>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <ul class="nav nav-tabs mb-4" id="bookingTabs">
+    <li class="nav-item">
+      <button class="nav-link active fw-600" data-bs-toggle="tab" data-bs-target="#tabAsClient">
+        <i class="bi bi-person me-1"></i>As Client
+        {% if client_pending_count %}
+          <span class="badge bg-warning ms-1">{{ client_pending_count }}</span>
+        {% endif %}
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link fw-600" data-bs-toggle="tab" data-bs-target="#tabAsProvider">
+        <i class="bi bi-star me-1"></i>As Provider
+        {% if provider_pending_count %}
+          <span class="badge bg-warning ms-1">{{ provider_pending_count }}</span>
+        {% endif %}
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content">
+
+    <!-- As Client -->
+    <div class="tab-pane fade show active" id="tabAsClient">
+      {% if client_bookings %}
+        <div class="d-flex flex-column gap-3">
+          {% for booking in client_bookings %}
+            <div class="card border-0 shadow-sm p-3">
+              <div class="d-flex flex-wrap gap-3 align-items-start">
+                <!-- Skill info -->
+                <div class="flex-grow-1">
+                  <div class="d-flex flex-wrap gap-2 align-items-center mb-1">
+                    {% if booking.status == 'pending' %}
+                      <span class="badge bg-warning-subtle text-warning fw-600">Pending</span>
+                    {% elif booking.status == 'confirmed' %}
+                      <span class="badge bg-success-subtle text-success fw-600">Confirmed</span>
+                    {% elif booking.status == 'completed' %}
+                      <span class="badge bg-secondary-subtle text-secondary fw-600">Completed</span>
+                    {% elif booking.status == 'cancelled' %}
+                      <span class="badge bg-danger-subtle text-danger fw-600">Cancelled</span>
+                    {% elif booking.status == 'declined' %}
+                      <span class="badge bg-danger-subtle text-danger fw-600">Declined</span>
+                    {% endif %}
+                    <span class="text-muted small"><i class="bi bi-clock me-1"></i>{{ booking.created_at|timesince }} ago</span>
+                  </div>
+                  <h6 class="fw-700 mb-1">
+                    <a href="{% url 'bookings:booking_detail' booking.pk %}" class="text-dark text-decoration-none">
+                      {{ booking.skill.title }}
+                    </a>
+                  </h6>
+                  <div class="d-flex align-items-center gap-2 text-muted small">
+                    <span><i class="bi bi-person me-1"></i>Provider: {{ booking.skill.provider.full_name }}</span>
+                    {% if booking.scheduled_at %}
+                      <span><i class="bi bi-calendar3 me-1"></i>{{ booking.scheduled_at|date:"M d, Y  H:i" }}</span>
+                    {% endif %}
+                  </div>
+                </div>
+                <!-- Price + actions -->
+                <div class="text-end">
+                  <p class="fw-800 text-primary mb-2" style="font-size:1.1rem;">UGX {{ booking.agreed_price|floatformat:"0" }}</p>
+                  <div class="d-flex gap-2 justify-content-end">
+                    <a href="{% url 'bookings:booking_detail' booking.pk %}" class="btn btn-outline-primary btn-sm fw-600">View</a>
+                    {% if booking.status == 'pending' %}
+                      <a href="{% url 'bookings:decline_booking' booking.pk %}" class="btn btn-outline-danger btn-sm fw-600">Cancel</a>
+                    {% elif booking.status == 'completed' and not booking.has_client_review %}
+                      <a href="{% url 'bookings:leave_review' booking.pk %}" class="btn btn-warning btn-sm fw-600">
+                        <i class="bi bi-star me-1"></i>Review
+                      </a>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        {% include 'partials/empty_state.html' with icon="bi-calendar-x" title="No bookings yet" message="Book a skill session to get started." action_url="skills:skill_list" action_text="Find Skills" %}
+      {% endif %}
+    </div>
+
+    <!-- As Provider -->
+    <div class="tab-pane fade" id="tabAsProvider">
+      {% if provider_bookings %}
+        <div class="d-flex flex-column gap-3">
+          {% for booking in provider_bookings %}
+            <div class="card border-0 shadow-sm p-3">
+              <div class="d-flex flex-wrap gap-3 align-items-start">
+                <div class="flex-grow-1">
+                  <div class="d-flex flex-wrap gap-2 align-items-center mb-1">
+                    {% if booking.status == 'pending' %}
+                      <span class="badge bg-warning-subtle text-warning fw-600">New Request</span>
+                    {% elif booking.status == 'confirmed' %}
+                      <span class="badge bg-success-subtle text-success fw-600">Confirmed</span>
+                    {% elif booking.status == 'completed' %}
+                      <span class="badge bg-secondary-subtle text-secondary fw-600">Completed</span>
+                    {% elif booking.status == 'cancelled' %}
+                      <span class="badge bg-danger-subtle text-danger fw-600">Cancelled</span>
+                    {% elif booking.status == 'declined' %}
+                      <span class="badge bg-danger-subtle text-danger fw-600">Declined</span>
+                    {% endif %}
+                    <span class="text-muted small"><i class="bi bi-clock me-1"></i>{{ booking.created_at|timesince }} ago</span>
+                  </div>
+                  <h6 class="fw-700 mb-1">
+                    <a href="{% url 'bookings:booking_detail' booking.pk %}" class="text-dark text-decoration-none">
+                      {{ booking.skill.title }}
+                    </a>
+                  </h6>
+                  <div class="d-flex align-items-center gap-2 text-muted small">
+                    <span><i class="bi bi-person me-1"></i>Client: {{ booking.client.full_name }}</span>
+                    {% if booking.scheduled_at %}
+                      <span><i class="bi bi-calendar3 me-1"></i>{{ booking.scheduled_at|date:"M d, Y  H:i" }}</span>
+                    {% endif %}
+                  </div>
+                </div>
+                <div class="text-end">
+                  <p class="fw-800 text-primary mb-2" style="font-size:1.1rem;">UGX {{ booking.agreed_price|floatformat:"0" }}</p>
+                  <div class="d-flex gap-2 justify-content-end">
+                    <a href="{% url 'bookings:booking_detail' booking.pk %}" class="btn btn-outline-primary btn-sm fw-600">View</a>
+                    {% if booking.status == 'pending' %}
+                      <a href="{% url 'bookings:accept_booking' booking.pk %}" class="btn btn-success btn-sm fw-600">Accept</a>
+                      <a href="{% url 'bookings:decline_booking' booking.pk %}" class="btn btn-outline-danger btn-sm fw-600">Decline</a>
+                    {% elif booking.status == 'confirmed' %}
+                      <a href="{% url 'bookings:complete_booking' booking.pk %}" class="btn btn-primary btn-sm fw-600">Mark Done</a>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        {% include 'partials/empty_state.html' with icon="bi-star" title="No incoming bookings" message="Post a skill offering to start receiving bookings." action_url="skills:skill_create" action_text="Offer a Skill" %}
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}

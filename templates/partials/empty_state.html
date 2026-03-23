@@ -1,0 +1,14 @@
+{% comment %}
+  Empty state component.
+  Variables: icon, title, message, action_url (url name), action_text
+{% endcomment %}
+<div class="text-center py-5">
+  <i class="bi {{ icon|default:'bi-inbox' }} empty-state-icon d-block mb-3"></i>
+  <h5 class="fw-700 text-dark mb-2">{{ title|default:"Nothing here yet" }}</h5>
+  <p class="text-muted mb-4" style="max-width:360px;margin:0 auto;">{{ message|default:"Check back later." }}</p>
+  {% if action_url and action_text %}
+    <a href="{% url action_url %}" class="btn btn-primary px-4 fw-600">
+      <i class="bi bi-plus-circle me-2"></i>{{ action_text }}
+    </a>
+  {% endif %}
+</div>

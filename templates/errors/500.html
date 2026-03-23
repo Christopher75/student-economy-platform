@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}500 – Something Went Wrong | Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center text-center">
+    <div class="col-sm-10 col-md-7 col-lg-5">
+      <div class="py-5">
+        <!-- Illustration -->
+        <div class="mb-4" style="font-size:6rem;line-height:1;">⚙️</div>
+
+        <h1 class="fw-800 mb-2" style="font-size:5rem;color:#e2e8f0;">500</h1>
+        <h2 class="fw-700 mb-3">Something Went Wrong</h2>
+        <p class="text-muted mb-5">
+          Our servers hit a bump in the road. Our team has been notified
+          and is working hard to fix it.
+        </p>
+
+        <div class="d-flex flex-wrap gap-3 justify-content-center mb-4">
+          <a href="{% url 'home' %}" class="btn btn-primary fw-600 px-4">
+            <i class="bi bi-house me-2"></i>Back to Home
+          </a>
+          <button onclick="window.location.reload()" class="btn btn-outline-secondary fw-600 px-4">
+            <i class="bi bi-arrow-clockwise me-2"></i>Try Again
+          </button>
+        </div>
+
+        <div class="alert alert-light d-flex gap-2 align-items-center text-start">
+          <i class="bi bi-info-circle text-primary fs-5"></i>
+          <div>
+            <strong>Error code:</strong> 500 Internal Server Error<br>
+            <span class="text-muted small">If this keeps happening, please contact support.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

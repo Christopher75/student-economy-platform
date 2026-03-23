@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% block title %}{% if action == 'Edit' %}Edit Listing{% else %}Post a Listing{% endif %} – Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-10 col-lg-8">
+
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="{% url 'marketplace:listing_list' %}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-arrow-left"></i>
+        </a>
+        <div>
+          <h2 class="fw-800 mb-0">{% if action == 'Edit' %}Edit Listing{% else %}Post a Listing{% endif %}</h2>
+          <p class="text-muted mb-0 small">Sell your items to fellow students</p>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm p-4">
+        <form method="post" enctype="multipart/form-data" novalidate id="listingForm">
+          {% csrf_token %}
+
+          <!-- Photos -->
+          <div class="mb-4">
+            <label class="form-label fw-600">Photos <span class="text-muted fw-400">(up to 5)</span></label>
+            <div class="border border-2 border-dashed rounded-3 p-4 text-center" id="dropZone"
+                 style="background:#f8fafc;cursor:pointer;">
+              <input type="file" name="photos" id="photosInput" multiple accept="image/*" class="d-none">
+              <i class="bi bi-cloud-arrow-up text-muted mb-2" style="font-size:2.5rem;"></i>
+              <p class="text-muted mb-1 fw-600">Click or drag photos here</p>
+              <p class="text-muted small mb-0">JPG, PNG or WEBP. Max 5 photos.</p>
+              <label for="photosInput" class="btn btn-outline-primary btn-sm mt-2">Choose Photos</label>
+            </div>
+            <div class="d-flex gap-2 flex-wrap mt-3" id="photoPreviews"></div>
+          </div>
+
+          <div class="row g-3">
+            <!-- Title -->
+            <div class="col-12">
+              <label class="form-label fw-600">Title <span class="text-danger">*</span></label>
+              <input type="text" name="{{ form.title.html_name }}"
+                     class="form-control{% if form.title.errors %} is-invalid{% endif %}"
+                     value="{{ form.title.value|default:'' }}"
+                     placeholder="e.g. Nearly new MacBook Pro 2021"
+                     maxlength="200" required>
+              {% if form.title.errors %}<div class="invalid-feedback">{{ form.title.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <!-- Category -->
+            <div class="col-md-6">
+              <label class="form-label fw-600">Category <span class="text-danger">*</span></label>
+              <select name="{{ form.category.html_name }}"
+                      class="form-select{% if form.category.errors %} is-invalid{% endif %}" required>
+                <option value="">Select category...</option>
+                {% for cat in form.category.field.queryset %}
+                  <option value="{{ cat.pk }}" {% if form.category.value == cat.pk|stringformat:"i" %}selected{% endif %}>
+                    {{ cat.name }}
+                  </option>
+                {% endfor %}
+              </select>
+              {% if form.category.errors %}<div class="invalid-feedback">{{ form.category.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <!-- Condition -->
+            <div class="col-md-6">
+              <label class="form-label fw-600">Condition <span class="text-danger">*</span></label>
+              <select name="{{ form.condition.html_name }}"
+                      class="form-select{% if form.condition.errors %} is-invalid{% endif %}" required>
+                {% for val, label in form.condition.field.choices %}
+                  <option value="{{ val }}" {% if form.condition.value == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              {% if form.condition.errors %}<div class="invalid-feedback">{{ form.condition.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <!-- Price -->
+            <div class="col-md-6">
+              <label class="form-label fw-600">Price (UGX) <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text bg-light">UGX</span>
+                <input type="number" name="{{ form.price.html_name }}"
+                       class="form-control{% if form.price.errors %} is-invalid{% endif %}"
+                       value="{{ form.price.value|default:'' }}"
+                       placeholder="0" min="0" step="1" required>
+              </div>
+              {% if form.price.errors %}<div class="invalid-feedback d-block">{{ form.price.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <!-- Negotiable -->
+            <div class="col-md-6 d-flex align-items-end">
+              <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" name="{{ form.negotiable.html_name }}"
+                       id="negotiable" {% if form.negotiable.value %}checked{% endif %}>
+                <label class="form-check-label fw-600" for="negotiable">
+                  <i class="bi bi-chat-text me-1 text-success"></i>Price is negotiable
+                </label>
+              </div>
+            </div>
+
+            <!-- Description -->
+            <div class="col-12">
+              <label class="form-label fw-600">Description <span class="text-danger">*</span></label>
+              <textarea name="{{ form.description.html_name }}"
+                        class="form-control{% if form.description.errors %} is-invalid{% endif %}"
+                        rows="5"
+                        placeholder="Describe your item: age, features, reason for selling, any defects...">{{ form.description.value|default:'' }}</textarea>
+              {% if form.description.errors %}<div class="invalid-feedback">{{ form.description.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <!-- Campus Location -->
+            <div class="col-12">
+              <label class="form-label fw-600">Pickup Location <span class="text-muted fw-400">(optional)</span></label>
+              <input type="text" name="{{ form.campus_location.html_name }}"
+                     class="form-control{% if form.campus_location.errors %} is-invalid{% endif %}"
+                     value="{{ form.campus_location.value|default:'' }}"
+                     placeholder="e.g. Main library, Faculty of Engineering...">
+              {% if form.campus_location.errors %}<div class="invalid-feedback">{{ form.campus_location.errors|join:", " }}</div>{% endif %}
+            </div>
+          </div>
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger mt-3">{{ form.non_field_errors|join:", " }}</div>
+          {% endif %}
+
+          <div class="d-flex gap-3 mt-4">
+            <button type="submit" class="btn btn-primary fw-600 px-5 py-2">
+              <i class="bi bi-check-circle me-2"></i>{% if action == 'Edit' %}Save Changes{% else %}Post Listing{% endif %}
+            </button>
+            <a href="{% url 'marketplace:listing_list' %}" class="btn btn-outline-secondary px-4">Cancel</a>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const photosInput = document.getElementById('photosInput');
+  const photoPreviews = document.getElementById('photoPreviews');
+
+  if (photosInput) {
+    photosInput.addEventListener('change', function() {
+      photoPreviews.innerHTML = '';
+      Array.from(this.files).slice(0, 5).forEach((file, idx) => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const div = document.createElement('div');
+          div.className = 'position-relative';
+          div.innerHTML = `
+            <img src="${e.target.result}" class="rounded-2 border"
+                 style="width:80px;height:80px;object-fit:cover;">
+            <span class="position-absolute top-0 end-0 badge bg-primary rounded-circle" style="font-size:.6rem;">${idx+1}</span>`;
+          photoPreviews.appendChild(div);
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+
+    // Drag and drop
+    const dropZone = document.getElementById('dropZone');
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor='#2563eb'; });
+    dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor=''; });
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.style.borderColor = '';
+      photosInput.files = e.dataTransfer.files;
+      photosInput.dispatchEvent(new Event('change'));
+    });
+  }
+</script>
+{% endblock %}

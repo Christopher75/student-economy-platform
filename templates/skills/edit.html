@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block title %}Edit Skill – Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-10 col-lg-8">
+
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="{% url 'skills:skill_detail' skill.pk %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+        <div>
+          <h2 class="fw-800 mb-0">Edit Skill</h2>
+          <p class="text-muted mb-0 small">{{ skill.title|truncatechars:50 }}</p>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm p-4">
+        <form method="post" enctype="multipart/form-data" novalidate>
+          {% csrf_token %}
+
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label fw-600">Skill Title</label>
+              <input type="text" name="{{ form.title.html_name }}"
+                     class="form-control{% if form.title.errors %} is-invalid{% endif %}"
+                     value="{{ form.title.value|default:skill.title }}" required>
+              {% if form.title.errors %}<div class="invalid-feedback">{{ form.title.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Category</label>
+              <select name="{{ form.category.html_name }}" class="form-select">
+                {% for cat in form.category.field.queryset %}
+                  <option value="{{ cat.pk }}" {% if skill.category.pk == cat.pk %}selected{% endif %}>{{ cat.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Delivery Method</label>
+              <select name="{{ form.delivery_method.html_name }}" class="form-select">
+                {% for val, label in form.delivery_method.field.choices %}
+                  <option value="{{ val }}" {% if skill.delivery_method == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Min Price (UGX )</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light">UGX </span>
+                <input type="number" name="{{ form.min_price.html_name }}"
+                       class="form-control{% if form.min_price.errors %} is-invalid{% endif %}"
+                       value="{{ form.min_price.value|default:skill.min_price }}" min="0" step="0.01">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Max Price (UGX )</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light">UGX </span>
+                <input type="number" name="{{ form.max_price.html_name }}"
+                       class="form-control"
+                       value="{{ form.max_price.value|default:skill.max_price }}" min="0" step="0.01">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Duration</label>
+              <input type="text" name="{{ form.duration.html_name }}" class="form-control"
+                     value="{{ form.duration.value|default:skill.duration }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Availability</label>
+              <input type="text" name="{{ form.availability.html_name }}" class="form-control"
+                     value="{{ form.availability.value|default:skill.availability }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Status</label>
+              <select name="{{ form.status.html_name }}" class="form-select">
+                {% for val, label in form.status.field.choices %}
+                  <option value="{{ val }}" {% if skill.status == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-600">Description</label>
+              <textarea name="{{ form.description.html_name }}"
+                        class="form-control{% if form.description.errors %} is-invalid{% endif %}"
+                        rows="5">{{ form.description.value|default:skill.description }}</textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-600">Add Portfolio Images</label>
+              <input type="file" name="new_portfolio_images" multiple accept="image/*" class="form-control" id="portfolioInput">
+              <div class="d-flex gap-2 flex-wrap mt-2" id="portfolioPreviews"></div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-3 mt-4">
+            <button type="submit" class="btn btn-primary fw-600 px-5 py-2">
+              <i class="bi bi-check-circle me-2"></i>Save Changes
+            </button>
+            <a href="{% url 'skills:skill_detail' skill.pk %}" class="btn btn-outline-secondary px-4">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.getElementById('portfolioInput').addEventListener('change', function() {
+    const container = document.getElementById('portfolioPreviews');
+    container.innerHTML = '';
+    Array.from(this.files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        img.className = 'rounded-2 border';
+        img.style.cssText = 'width:70px;height:70px;object-fit:cover;';
+        container.appendChild(img);
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+</script>
+{% endblock %}

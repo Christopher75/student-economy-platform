@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}Inbox – Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row">
+    <div class="col-md-5 col-lg-4 mb-4 mb-md-0">
+
+      <!-- Sidebar: conversation list -->
+      <div class="card border-0 shadow-sm overflow-hidden">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+          <h5 class="fw-800 mb-0"><i class="bi bi-chat-dots me-2 text-primary"></i>Messages</h5>
+          {% if unread_messages_count %}
+            <span class="badge bg-primary rounded-pill">{{ unread_messages_count }}</span>
+          {% endif %}
+        </div>
+
+        {% if conversations_with_unread %}
+          <div class="list-group list-group-flush">
+            {% for item in conversations_with_unread %}
+              {% with conv=item.conversation other=item.other_participant %}
+              <a href="{% url 'messaging:conversation' conv.pk %}"
+                 class="list-group-item list-group-item-action p-3 {% if item.unread_count %}bg-primary-subtle{% endif %}">
+                <div class="d-flex align-items-center gap-2">
+                  <!-- Avatar -->
+                  {% if other.profile_photo %}
+                    <img src="{{ other.profile_photo.url }}"
+                         class="rounded-circle flex-shrink-0"
+                         style="width:40px;height:40px;object-fit:cover;" alt="">
+                  {% else %}
+                    <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white flex-shrink-0"
+                         style="width:40px;height:40px;font-size:.75rem;font-weight:700;">
+                      {{ other.display_name|first|upper }}
+                    </div>
+                  {% endif %}
+                  <!-- Info -->
+                  <div class="flex-grow-1 min-w-0">
+                    <div class="d-flex justify-content-between align-items-baseline">
+                      <span class="fw-600 text-dark" style="font-size:.88rem;">{{ other.display_name }}</span>
+                      {% if item.last_message %}
+                        <span class="text-muted" style="font-size:.7rem;">{{ item.last_message.created_at|timesince }} ago</span>
+                      {% endif %}
+                    </div>
+                    <div class="text-muted text-truncate" style="font-size:.8rem;">
+                      {% if item.last_message %}
+                        {% if item.last_message.sender == request.user %}<span class="text-muted">You: </span>{% endif %}
+                        {{ item.last_message.content|truncatechars:45 }}
+                      {% else %}
+                        <em>No messages yet</em>
+                      {% endif %}
+                    </div>
+                    {% if conv.listing %}
+                      <small class="text-muted"><i class="bi bi-bag me-1"></i>{{ conv.listing.title|truncatechars:30 }}</small>
+                    {% endif %}
+                  </div>
+                  <!-- Unread badge -->
+                  {% if item.unread_count %}
+                    <span class="badge bg-primary rounded-pill flex-shrink-0">{{ item.unread_count }}</span>
+                  {% endif %}
+                </div>
+              </a>
+              {% endwith %}
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="p-5 text-center">
+            <i class="bi bi-chat-dots text-muted" style="font-size:3rem;opacity:.4;"></i>
+            <p class="text-muted mt-3 mb-1 fw-600">No conversations yet</p>
+            <p class="text-muted small">Browse the marketplace and contact a seller to start messaging.</p>
+            <a href="{% url 'marketplace:listing_list' %}" class="btn btn-primary btn-sm mt-2">Browse Listings</a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Main panel: prompt to select -->
+    <div class="col-md-7 col-lg-8 d-none d-md-flex align-items-center justify-content-center">
+      <div class="text-center text-muted">
+        <i class="bi bi-chat-square-text" style="font-size:5rem;opacity:.25;"></i>
+        <h5 class="fw-700 mt-3">Select a conversation</h5>
+        <p class="small">Choose a conversation from the list to read and reply.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

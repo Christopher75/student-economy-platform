@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block title %}Chat with {{ other_participant.display_name }} – Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row">
+
+    <!-- Chat area -->
+    <div class="col-12">
+      <div class="card border-0 shadow-sm overflow-hidden" style="height:calc(100vh - 160px);min-height:500px;display:flex;flex-direction:column;">
+
+        <!-- Chat header -->
+        <div class="card-header bg-white border-bottom d-flex align-items-center gap-3 py-3">
+          <a href="{% url 'messaging:inbox' %}" class="btn btn-outline-secondary btn-sm me-1"><i class="bi bi-arrow-left"></i></a>
+          {% if other_participant.profile_photo %}
+            <img src="{{ other_participant.profile_photo.url }}" class="avatar-sm" alt="">
+          {% else %}
+            <div class="avatar-sm bg-primary d-flex align-items-center justify-content-center text-white fw-700"
+                 style="font-size:.7rem;">
+              {{ other_participant.display_name|first|upper }}
+            </div>
+          {% endif %}
+          <div>
+            <div class="fw-700">{{ other_participant.display_name }}</div>
+            <div class="text-muted small">{{ other_participant.university|default:"Student" }}</div>
+          </div>
+          <a href="{% url 'accounts:profile' other_participant.username %}" class="btn btn-outline-secondary btn-sm ms-auto">
+            <i class="bi bi-person me-1"></i>Profile
+          </a>
+        </div>
+
+        <!-- Messages -->
+        <div class="flex-grow-1 overflow-auto p-3 d-flex flex-column gap-3" id="chatMessages">
+          {% if messages_list %}
+            {% for msg in messages_list %}
+              {% if msg.sender == user %}
+                <!-- Sent message (right-aligned) -->
+                <div class="d-flex justify-content-end align-items-end gap-2">
+                  <div class="message-wrapper text-end">
+                    <div class="message-bubble message-mine">{{ msg.content }}{% if msg.image %}<div class="mt-2"><img src="{{ msg.image.url }}" class="img-fluid rounded" style="max-width:200px;" alt="attachment"></div>{% endif %}</div>
+                    <div class="text-muted mt-1" style="font-size:.7rem;">
+                      {{ msg.created_at|date:"H:i" }}
+                      {% if msg.read_at %}<i class="bi bi-check2-all text-primary"></i>{% else %}<i class="bi bi-check2 text-muted"></i>{% endif %}
+                    </div>
+                  </div>
+                </div>
+              {% else %}
+                <!-- Received message (left-aligned) -->
+                <div class="d-flex justify-content-start align-items-end gap-2">
+                  {% if msg.sender.profile_photo %}
+                    <img src="{{ msg.sender.profile_photo.url }}" class="avatar-sm flex-shrink-0 mb-1" alt="">
+                  {% else %}
+                    <div class="avatar-sm bg-secondary d-flex align-items-center justify-content-center text-white flex-shrink-0 mb-1"
+                         style="font-size:.6rem;font-weight:700;">
+                      {{ msg.sender.display_name|first|upper }}
+                    </div>
+                  {% endif %}
+                  <div class="message-wrapper">
+                    <div class="message-bubble message-theirs">{{ msg.content }}{% if msg.image %}<div class="mt-2"><img src="{{ msg.image.url }}" class="img-fluid rounded" style="max-width:200px;" alt="attachment"></div>{% endif %}</div>
+                    <div class="text-muted mt-1" style="font-size:.7rem;">{{ msg.created_at|date:"H:i" }}</div>
+                  </div>
+                </div>
+              {% endif %}
+            {% endfor %}
+          {% else %}
+            <div class="text-center my-auto">
+              <i class="bi bi-chat-dots text-muted mb-2" style="font-size:3rem;"></i>
+              <p class="text-muted">No messages yet. Say hello!</p>
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Message input -->
+        <div class="card-footer bg-white border-top p-3">
+          <form method="post" action="" enctype="multipart/form-data"
+                class="d-flex align-items-end gap-2" id="messageForm">
+            {% csrf_token %}
+            <textarea name="content" id="msgContent" class="form-control"
+                      rows="1" placeholder="Type a message..."
+                      style="resize:none;max-height:120px;overflow-y:auto;"
+                      required></textarea>
+            <button type="submit" class="btn btn-primary flex-shrink-0 px-3">
+              <i class="bi bi-send-fill"></i>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Auto-scroll to bottom
+  const chatArea = document.getElementById('chatMessages');
+  if (chatArea) chatArea.scrollTop = chatArea.scrollHeight;
+
+  // Auto-grow textarea
+  const textarea = document.getElementById('msgContent');
+  if (textarea) {
+    textarea.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+    });
+    // Submit on Enter (Shift+Enter for newline)
+    textarea.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (this.value.trim()) document.getElementById('messageForm').submit();
+      }
+    });
+  }
+</script>
+{% endblock %}

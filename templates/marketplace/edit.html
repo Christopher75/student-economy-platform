@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+{% block title %}Edit Listing – Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-10 col-lg-8">
+
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="{% url 'marketplace:listing_detail' listing.pk %}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-arrow-left"></i>
+        </a>
+        <div>
+          <h2 class="fw-800 mb-0">Edit Listing</h2>
+          <p class="text-muted mb-0 small">{{ listing.title|truncatechars:50 }}</p>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm p-4">
+        <form method="post" enctype="multipart/form-data" novalidate>
+          {% csrf_token %}
+
+          <!-- Existing photos -->
+          {% if listing.photos.all %}
+            <div class="mb-4">
+              <label class="form-label fw-600">Current Photos</label>
+              <div class="d-flex gap-2 flex-wrap">
+                {% for photo in listing.photos.all %}
+                  <div class="position-relative">
+                    <img src="{{ photo.image.url }}" class="rounded-2 border"
+                         style="width:80px;height:80px;object-fit:cover;">
+                    <a href="{% url 'listing_photo_delete' photo.pk %}"
+                       class="position-absolute top-0 end-0 btn btn-danger rounded-circle p-0 d-flex align-items-center justify-content-center"
+                       style="width:22px;height:22px;font-size:.6rem;"
+                       title="Remove photo">
+                      <i class="bi bi-x"></i>
+                    </a>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% endif %}
+
+          <!-- Add new photos -->
+          <div class="mb-4">
+            <label class="form-label fw-600">Add More Photos</label>
+            <input type="file" name="new_photos" multiple accept="image/*" class="form-control" id="newPhotosInput">
+            <div class="d-flex gap-2 flex-wrap mt-2" id="newPhotoPreviews"></div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label fw-600">Title</label>
+              <input type="text" name="{{ form.title.html_name }}"
+                     class="form-control{% if form.title.errors %} is-invalid{% endif %}"
+                     value="{{ form.title.value|default:listing.title }}" required>
+              {% if form.title.errors %}<div class="invalid-feedback">{{ form.title.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Category</label>
+              <select name="{{ form.category.html_name }}"
+                      class="form-select{% if form.category.errors %} is-invalid{% endif %}">
+                {% for cat in form.category.field.queryset %}
+                  <option value="{{ cat.pk }}" {% if listing.category.pk == cat.pk %}selected{% endif %}>{{ cat.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Condition</label>
+              <select name="{{ form.condition.html_name }}"
+                      class="form-select{% if form.condition.errors %} is-invalid{% endif %}">
+                {% for val, label in form.condition.field.choices %}
+                  <option value="{{ val }}" {% if listing.condition == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Price (UGX )</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light">UGX </span>
+                <input type="number" name="{{ form.price.html_name }}"
+                       class="form-control{% if form.price.errors %} is-invalid{% endif %}"
+                       value="{{ form.price.value|default:listing.price }}" min="0" step="0.01">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Status</label>
+              <select name="{{ form.status.html_name }}" class="form-select">
+                {% for val, label in form.status.field.choices %}
+                  <option value="{{ val }}" {% if listing.status == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="{{ form.is_negotiable.html_name }}"
+                       id="is_negotiable" {% if listing.is_negotiable %}checked{% endif %}>
+                <label class="form-check-label fw-600" for="is_negotiable">Price is negotiable</label>
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-600">Description</label>
+              <textarea name="{{ form.description.html_name }}"
+                        class="form-control{% if form.description.errors %} is-invalid{% endif %}"
+                        rows="5">{{ form.description.value|default:listing.description }}</textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-600">Pickup Location</label>
+              <input type="text" name="{{ form.location.html_name }}"
+                     class="form-control{% if form.location.errors %} is-invalid{% endif %}"
+                     value="{{ form.location.value|default:listing.location }}">
+            </div>
+          </div>
+
+          <div class="d-flex gap-3 mt-4">
+            <button type="submit" class="btn btn-primary fw-600 px-5 py-2">
+              <i class="bi bi-check-circle me-2"></i>Save Changes
+            </button>
+            <a href="{% url 'marketplace:listing_detail' listing.pk %}" class="btn btn-outline-secondary px-4">Cancel</a>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.getElementById('newPhotosInput').addEventListener('change', function() {
+    const container = document.getElementById('newPhotoPreviews');
+    container.innerHTML = '';
+    Array.from(this.files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        img.className = 'rounded-2 border';
+        img.style.cssText = 'width:70px;height:70px;object-fit:cover;';
+        container.appendChild(img);
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,221 @@
+{% extends 'base.html' %}
+{% block title %}{{ profile_user.full_name }} – Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Profile Header -->
+  <div class="card border-0 shadow-sm mb-4 overflow-hidden">
+    <!-- Cover banner -->
+    <div style="height:140px;background:linear-gradient(135deg,#1e40af,#3b82f6);"></div>
+    <div class="card-body px-4 pb-4">
+      <div class="d-flex flex-wrap gap-3 align-items-end" style="margin-top:-48px;">
+        <!-- Avatar -->
+        <div class="position-relative">
+          {% if profile_user.profile_photo %}
+            <img src="{{ profile_user.profile_photo.url }}" alt="{{ profile_user.full_name }}"
+                 class="rounded-circle border border-4 border-white shadow"
+                 style="width:90px;height:90px;object-fit:cover;">
+          {% else %}
+            <div class="rounded-circle border border-4 border-white shadow bg-primary d-flex align-items-center justify-content-center text-white"
+                 style="width:90px;height:90px;font-size:2rem;font-weight:800;">
+              {{ profile_user.display_name|first|upper }}
+            </div>
+          {% endif %}
+          {% if profile_user.is_verified %}
+            <span class="position-absolute bottom-0 end-0 text-success" title="Verified Student" style="font-size:1.2rem;">
+              <i class="bi bi-patch-check-fill"></i>
+            </span>
+          {% endif %}
+        </div>
+        <!-- Name + info -->
+        <div class="flex-grow-1 pt-4">
+          <h3 class="fw-800 mb-0">{{ profile_user.full_name }}</h3>
+          <div class="d-flex flex-wrap gap-2 mt-1">
+            {% if profile_user.university %}
+              <span class="text-muted small"><i class="bi bi-building me-1"></i>{{ profile_user.university }}</span>
+            {% endif %}
+            {% if profile_user.course %}
+              <span class="text-muted small"><i class="bi bi-book me-1"></i>{{ profile_user.course }}</span>
+            {% endif %}
+            {% if profile_user.year_of_study %}
+              <span class="text-muted small"><i class="bi bi-calendar3 me-1"></i>Year {{ profile_user.year_of_study }}</span>
+            {% endif %}
+          </div>
+        </div>
+        <!-- Actions -->
+        <div class="d-flex gap-2 mt-3 mt-md-0">
+          {% if user == profile_user %}
+            <a href="{% url 'accounts:edit_profile' %}" class="btn btn-outline-primary btn-sm fw-600">
+              <i class="bi bi-pencil me-1"></i>Edit Profile
+            </a>
+          {% else %}
+            <a href="{% url 'messaging:conversation' profile_user.pk %}" class="btn btn-primary btn-sm fw-600">
+              <i class="bi bi-chat-dots me-1"></i>Message
+            </a>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Trust badge -->
+      <div class="mt-3 d-flex flex-wrap gap-2 align-items-center">
+        <span class="trust-badge gold">
+          <i class="bi bi-trophy-fill"></i>
+          Trust Score: {{ profile_user.trust_score|default:"0" }}
+        </span>
+        {% if profile_user.is_online %}
+          <span class="badge bg-success-subtle text-success small"><i class="bi bi-circle-fill me-1" style="font-size:.5rem;"></i>Online</span>
+        {% endif %}
+        <span class="text-muted small">Joined {{ profile_user.date_joined|date:"M Y" }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <div class="fw-800 text-primary" style="font-size:1.6rem;">{{ listings_count|default:"0" }}</div>
+        <div class="text-muted small">Listings</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <div class="fw-800 text-primary" style="font-size:1.6rem;">{{ skills_count|default:"0" }}</div>
+        <div class="text-muted small">Skills Offered</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <div class="fw-800 text-primary" style="font-size:1.6rem;">{{ reviews_count|default:"0" }}</div>
+        <div class="text-muted small">Reviews</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <div class="fw-800 text-warning" style="font-size:1.4rem;">
+          {% include 'partials/star_rating.html' with rating=average_rating %}
+        </div>
+        <div class="text-muted small">Avg Rating</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <ul class="nav nav-tabs mb-4" id="profileTabs">
+    <li class="nav-item">
+      <button class="nav-link active fw-600" data-bs-toggle="tab" data-bs-target="#tabListings">
+        <i class="bi bi-bag me-1"></i>Listings
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link fw-600" data-bs-toggle="tab" data-bs-target="#tabSkills">
+        <i class="bi bi-lightbulb me-1"></i>Skills
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link fw-600" data-bs-toggle="tab" data-bs-target="#tabReviews">
+        <i class="bi bi-star me-1"></i>Reviews
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link fw-600" data-bs-toggle="tab" data-bs-target="#tabAbout">
+        <i class="bi bi-info-circle me-1"></i>About
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content">
+    <!-- Listings tab -->
+    <div class="tab-pane fade show active" id="tabListings">
+      {% if user_listings %}
+        <div class="row g-3">
+          {% for listing in user_listings %}
+            <div class="col-6 col-md-4 col-lg-3">
+              {% include 'partials/listing_card.html' with listing=listing %}
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        {% include 'partials/empty_state.html' with icon="bi-bag-x" title="No listings yet" message="This user hasn't posted any listings." %}
+      {% endif %}
+    </div>
+
+    <!-- Skills tab -->
+    <div class="tab-pane fade" id="tabSkills">
+      {% if user_skills %}
+        <div class="row g-3">
+          {% for skill in user_skills %}
+            <div class="col-md-4 col-lg-4">
+              {% include 'partials/skill_card.html' with skill=skill %}
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        {% include 'partials/empty_state.html' with icon="bi-lightbulb" title="No skills listed" message="This user hasn't offered any skills yet." %}
+      {% endif %}
+    </div>
+
+    <!-- Reviews tab -->
+    <div class="tab-pane fade" id="tabReviews">
+      {% if user_reviews %}
+        {% for review in user_reviews %}
+          <div class="card border-0 shadow-sm mb-3 p-3">
+            <div class="d-flex gap-3">
+              {% if review.reviewer.profile_photo %}
+                <img src="{{ review.reviewer.profile_photo.url }}" class="avatar-sm" alt="">
+              {% else %}
+                <div class="avatar-sm bg-secondary d-flex align-items-center justify-content-center text-white"
+                     style="font-size:.7rem;font-weight:700;">
+                  {{ review.reviewer.display_name|first|upper }}
+                </div>
+              {% endif %}
+              <div class="flex-grow-1">
+                <div class="d-flex justify-content-between">
+                  <strong>{{ review.reviewer.full_name }}</strong>
+                  <small class="text-muted">{{ review.created_at|date:"M d, Y" }}</small>
+                </div>
+                {% include 'partials/star_rating.html' with rating=review.rating %}
+                <p class="mt-2 mb-0 text-muted">{{ review.comment }}</p>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        {% include 'partials/empty_state.html' with icon="bi-chat-square-text" title="No reviews yet" message="Reviews will appear here after completed transactions." %}
+      {% endif %}
+    </div>
+
+    <!-- About tab -->
+    <div class="tab-pane fade" id="tabAbout">
+      <div class="card border-0 shadow-sm p-4">
+        <h6 class="fw-700 mb-3">About {{ profile_user.display_name }}</h6>
+        {% if profile_user.bio %}
+          <p class="text-muted">{{ profile_user.bio }}</p>
+        {% else %}
+          <p class="text-muted fst-italic">No bio provided yet.</p>
+        {% endif %}
+        <hr>
+        <div class="row g-2">
+          {% if profile_user.university %}
+            <div class="col-sm-6">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-building text-primary"></i>
+                <span class="text-muted small">{{ profile_user.university }}</span>
+              </div>
+            </div>
+          {% endif %}
+          {% if profile_user.course %}
+            <div class="col-sm-6">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-book text-primary"></i>
+                <span class="text-muted small">{{ profile_user.course }}</span>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

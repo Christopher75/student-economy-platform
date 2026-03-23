@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+{% block title %}Browse Marketplace – Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Page heading + search -->
+  <div class="row align-items-center mb-4 g-3">
+    <div class="col-md-6">
+      <h2 class="fw-800 mb-0"><i class="bi bi-bag me-2 text-primary"></i>Marketplace</h2>
+      <p class="text-muted mb-0 small">{{ total_listings|default:0 }} item{{ total_listings|pluralize }} available</p>
+    </div>
+    <div class="col-md-6">
+      <form method="get" class="d-flex gap-2">
+        <input type="text" name="q" value="{{ request.GET.q }}"
+               class="form-control" placeholder="Search listings...">
+        <button type="submit" class="btn btn-primary px-3"><i class="bi bi-search"></i></button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Active filter badges -->
+  {% if request.GET.q or request.GET.category or request.GET.condition or request.GET.min_price or request.GET.max_price %}
+    <div class="d-flex flex-wrap gap-2 mb-3">
+      <span class="text-muted small fw-600 align-self-center">Active filters:</span>
+      {% if request.GET.q %}
+        <a href="?{% for key, value in request.GET.items %}{% if key != 'q' and key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}"
+           class="badge bg-primary-subtle text-primary text-decoration-none">
+          "{{ request.GET.q }}" <i class="bi bi-x ms-1"></i>
+        </a>
+      {% endif %}
+      {% if request.GET.category %}
+        <a href="?{% for key, value in request.GET.items %}{% if key != 'category' and key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}"
+           class="badge bg-primary-subtle text-primary text-decoration-none">
+          Category: {{ request.GET.category }} <i class="bi bi-x ms-1"></i>
+        </a>
+      {% endif %}
+      {% if request.GET.condition %}
+        <a href="?{% for key, value in request.GET.items %}{% if key != 'condition' and key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}"
+           class="badge bg-primary-subtle text-primary text-decoration-none">
+          Condition: {{ request.GET.condition }} <i class="bi bi-x ms-1"></i>
+        </a>
+      {% endif %}
+      <a href="{% url 'marketplace:listing_list' %}" class="badge bg-danger-subtle text-danger text-decoration-none">
+        Clear All <i class="bi bi-x-circle ms-1"></i>
+      </a>
+    </div>
+  {% endif %}
+
+  <div class="row g-4">
+
+    <!-- Filter Sidebar -->
+    <div class="col-lg-3 d-none d-lg-block">
+      <form method="get" id="filterForm">
+        <input type="hidden" name="q" value="{{ request.GET.q }}">
+        <div class="filter-sidebar p-3">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-700 mb-0">Filters</h6>
+            <a href="{% url 'marketplace:listing_list' %}" class="text-muted small">Clear all</a>
+          </div>
+
+          <!-- Categories -->
+          <div class="mb-4">
+            <p class="filter-title mb-2">Category</p>
+            {% for cat in categories %}
+              <div class="form-check mb-1">
+                <input class="form-check-input" type="radio" name="category"
+                       id="cat_{{ cat.slug }}" value="{{ cat.slug }}"
+                       {% if request.GET.category == cat.slug %}checked{% endif %}
+                       onchange="document.getElementById('filterForm').submit()">
+                <label class="form-check-label small" for="cat_{{ cat.slug }}">
+                  {{ cat.name }}
+                </label>
+              </div>
+            {% empty %}
+              <p class="text-muted small">No categories.</p>
+            {% endfor %}
+          </div>
+
+          <!-- Condition -->
+          <div class="mb-4">
+            <p class="filter-title mb-2">Condition</p>
+            {% for val, label in condition_choices %}
+              <div class="form-check mb-1">
+                <input class="form-check-input" type="radio" name="condition"
+                       id="cond_{{ val }}" value="{{ val }}"
+                       {% if request.GET.condition == val %}checked{% endif %}
+                       onchange="document.getElementById('filterForm').submit()">
+                <label class="form-check-label small" for="cond_{{ val }}">{{ label }}</label>
+              </div>
+            {% endfor %}
+          </div>
+
+          <!-- Price Range -->
+          <div class="mb-4">
+            <p class="filter-title mb-2">Price Range (UGX )</p>
+            <div class="d-flex gap-2">
+              <input type="number" name="min_price" value="{{ request.GET.min_price }}"
+                     class="form-control form-control-sm" placeholder="Min">
+              <input type="number" name="max_price" value="{{ request.GET.max_price }}"
+                     class="form-control form-control-sm" placeholder="Max">
+            </div>
+          </div>
+
+          <!-- University -->
+          <div class="mb-4">
+            <p class="filter-title mb-2">University</p>
+            <input type="text" name="university" value="{{ request.GET.university }}"
+                   class="form-control form-control-sm" placeholder="Filter by university">
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 fw-600 btn-sm">
+            <i class="bi bi-funnel me-1"></i>Apply Filters
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Main content -->
+    <div class="col-lg-9">
+
+      <!-- Sort + Mobile filter toggle -->
+      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <button class="btn btn-outline-secondary btn-sm d-lg-none" data-bs-toggle="offcanvas" data-bs-target="#mobileFilters">
+          <i class="bi bi-funnel me-1"></i>Filters
+        </button>
+        <form method="get" class="d-flex align-items-center gap-2 ms-auto">
+          {% for key, value in request.GET.items %}{% if key != 'sort' %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endif %}{% endfor %}
+          <label class="text-muted small mb-0">Sort by:</label>
+          <select name="sort" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+            <option value="-created_at" {% if request.GET.sort == '-created_at' %}selected{% endif %}>Newest</option>
+            <option value="price" {% if request.GET.sort == 'price' %}selected{% endif %}>Price: Low – High</option>
+            <option value="-price" {% if request.GET.sort == '-price' %}selected{% endif %}>Price: High – Low</option>
+            <option value="-views_count" {% if request.GET.sort == '-views_count' %}selected{% endif %}>Most Viewed</option>
+          </select>
+        </form>
+      </div>
+
+      {% if listings %}
+        <div class="row g-3">
+          {% for listing in listings %}
+            <div class="col-6 col-md-4 col-lg-4">
+              {% include 'partials/listing_card.html' with listing=listing %}
+            </div>
+          {% endfor %}
+        </div>
+        {% include 'partials/pagination.html' with page_obj=listings request=request %}
+      {% else %}
+        {% include 'partials/empty_state.html' with icon="bi-bag-x" title="No listings found" message="Try adjusting your filters or search terms." %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Mobile filter offcanvas -->
+<div class="offcanvas offcanvas-start" tabindex="-1" id="mobileFilters">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title fw-700">Filters</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body">
+    <form method="get">
+      <input type="hidden" name="q" value="{{ request.GET.q }}">
+      <div class="mb-4">
+        <p class="filter-title mb-2">Category</p>
+        {% for cat in categories %}
+          <div class="form-check mb-1">
+            <input class="form-check-input" type="radio" name="category"
+                   value="{{ cat.slug }}" {% if request.GET.category == cat.slug %}checked{% endif %}>
+            <label class="form-check-label small">{{ cat.name }}</label>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="mb-4">
+        <p class="filter-title mb-2">Condition</p>
+        {% for val, label in condition_choices %}
+          <div class="form-check mb-1">
+            <input class="form-check-input" type="radio" name="condition"
+                   value="{{ val }}" {% if request.GET.condition == val %}checked{% endif %}>
+            <label class="form-check-label small">{{ label }}</label>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="mb-4">
+        <p class="filter-title mb-2">Price (UGX )</p>
+        <div class="d-flex gap-2">
+          <input type="number" name="min_price" value="{{ request.GET.min_price }}"
+                 class="form-control form-control-sm" placeholder="Min">
+          <input type="number" name="max_price" value="{{ request.GET.max_price }}"
+                 class="form-control form-control-sm" placeholder="Max">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary w-100 fw-600">Apply</button>
+      <a href="{% url 'marketplace:listing_list' %}" class="btn btn-outline-secondary w-100 mt-2">Clear All</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

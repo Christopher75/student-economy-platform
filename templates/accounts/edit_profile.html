@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Edit Profile – Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8 col-lg-7">
+
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="{% url 'accounts:profile' user.username %}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-arrow-left"></i>
+        </a>
+        <h2 class="fw-800 mb-0">Edit Profile</h2>
+      </div>
+
+      <div class="card border-0 shadow-sm p-4">
+        <form method="post" enctype="multipart/form-data" novalidate>
+          {% csrf_token %}
+
+          <!-- Profile photo -->
+          <div class="text-center mb-4">
+            <div class="position-relative d-inline-block">
+              {% if user.profile_photo %}
+                <img id="photoPreview" src="{{ user.profile_photo.url }}" alt="Profile"
+                     class="rounded-circle border border-3" style="width:90px;height:90px;object-fit:cover;">
+              {% else %}
+                <div id="photoPreviewDefault" class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white border border-3"
+                     style="width:90px;height:90px;font-size:2rem;font-weight:800;">
+                  {{ user.display_name|first|upper }}
+                </div>
+                <img id="photoPreview" src="" alt="" class="rounded-circle border border-3 d-none"
+                     style="width:90px;height:90px;object-fit:cover;">
+              {% endif %}
+              <label for="id_profile_photo"
+                     class="position-absolute bottom-0 end-0 btn btn-primary rounded-circle p-0 d-flex align-items-center justify-content-center"
+                     style="width:30px;height:30px;cursor:pointer;">
+                <i class="bi bi-camera-fill" style="font-size:.75rem;"></i>
+              </label>
+              <input type="file" name="profile_photo" id="id_profile_photo"
+                     class="d-none" accept="image/*">
+            </div>
+            <p class="text-muted small mt-2">Click camera icon to change photo</p>
+          </div>
+
+          <div class="row g-3">
+
+            <!-- Full Name -->
+            <div class="col-12">
+              <label for="id_full_name" class="form-label fw-600">Full Name <span class="text-danger">*</span></label>
+              <input type="text" name="full_name" id="id_full_name"
+                     class="form-control{% if form.full_name.errors %} is-invalid{% endif %}"
+                     value="{{ form.full_name.value|default:user.full_name }}" required>
+              {% if form.full_name.errors %}
+                <div class="invalid-feedback">{{ form.full_name.errors|join:", " }}</div>
+              {% endif %}
+            </div>
+
+            <!-- Bio -->
+            <div class="col-12">
+              <label for="id_bio" class="form-label fw-600">Bio <span class="text-muted fw-400">(optional)</span></label>
+              <textarea name="bio" id="id_bio"
+                        class="form-control{% if form.bio.errors %} is-invalid{% endif %}"
+                        rows="3" placeholder="Tell other students about yourself...">{{ form.bio.value|default:user.bio }}</textarea>
+              {% if form.bio.errors %}
+                <div class="invalid-feedback">{{ form.bio.errors|join:", " }}</div>
+              {% endif %}
+            </div>
+
+            <!-- University -->
+            <div class="col-12">
+              <label for="id_university" class="form-label fw-600">University / Institution <span class="text-danger">*</span></label>
+              <input type="text" name="university" id="id_university"
+                     class="form-control{% if form.university.errors %} is-invalid{% endif %}"
+                     value="{{ form.university.value|default:user.university }}" required>
+              {% if form.university.errors %}
+                <div class="invalid-feedback">{{ form.university.errors|join:", " }}</div>
+              {% endif %}
+            </div>
+
+            <!-- Course & Year -->
+            <div class="col-md-7">
+              <label for="id_course" class="form-label fw-600">Course / Programme <span class="text-danger">*</span></label>
+              <input type="text" name="course" id="id_course"
+                     class="form-control{% if form.course.errors %} is-invalid{% endif %}"
+                     value="{{ form.course.value|default:user.course }}" required>
+              {% if form.course.errors %}
+                <div class="invalid-feedback">{{ form.course.errors|join:", " }}</div>
+              {% endif %}
+            </div>
+            <div class="col-md-5">
+              <label for="id_year_of_study" class="form-label fw-600">Year of Study <span class="text-danger">*</span></label>
+              <select name="year_of_study" id="id_year_of_study"
+                      class="form-select{% if form.year_of_study.errors %} is-invalid{% endif %}" required>
+                <option value="">Select year</option>
+                <option value="1" {% if user.year_of_study == 1 %}selected{% endif %}>Year 1</option>
+                <option value="2" {% if user.year_of_study == 2 %}selected{% endif %}>Year 2</option>
+                <option value="3" {% if user.year_of_study == 3 %}selected{% endif %}>Year 3</option>
+                <option value="4" {% if user.year_of_study == 4 %}selected{% endif %}>Year 4</option>
+                <option value="5" {% if user.year_of_study == 5 %}selected{% endif %}>Year 5</option>
+                <option value="6" {% if user.year_of_study == 6 %}selected{% endif %}>Year 6</option>
+              </select>
+              {% if form.year_of_study.errors %}
+                <div class="invalid-feedback">{{ form.year_of_study.errors|join:", " }}</div>
+              {% endif %}
+            </div>
+
+            <!-- Phone -->
+            <div class="col-12">
+              <label for="id_phone_number" class="form-label fw-600">Phone Number <span class="text-danger">*</span></label>
+              <input type="tel" name="phone_number" id="id_phone_number"
+                     class="form-control{% if form.phone_number.errors %} is-invalid{% endif %}"
+                     value="{{ form.phone_number.value|default:user.phone_number }}"
+                     placeholder="+256 700 000 000" required>
+              {% if form.phone_number.errors %}
+                <div class="invalid-feedback">{{ form.phone_number.errors|join:", " }}</div>
+              {% endif %}
+            </div>
+
+          </div>
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger mt-3 mb-0">{{ form.non_field_errors|join:", " }}</div>
+          {% endif %}
+
+          <div class="d-flex gap-3 mt-4">
+            <button type="submit" class="btn btn-primary fw-600 px-4">
+              <i class="bi bi-check-lg me-2"></i>Save Changes
+            </button>
+            <a href="{% url 'accounts:profile' user.username %}" class="btn btn-outline-secondary px-4">Cancel</a>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const photoInput = document.getElementById('id_profile_photo');
+  if (photoInput) {
+    photoInput.addEventListener('change', function() {
+      const file = this.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const preview = document.getElementById('photoPreview');
+          const defaultDiv = document.getElementById('photoPreviewDefault');
+          preview.src = e.target.result;
+          preview.classList.remove('d-none');
+          if (defaultDiv) defaultDiv.classList.add('d-none');
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,251 @@
+{% extends 'base.html' %}
+{% block title %}{{ skill.title }} – Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Breadcrumb -->
+  <nav class="mb-3">
+    <ol class="breadcrumb small">
+      <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'skills:skill_list' %}">Skills</a></li>
+      {% if skill.category %}
+        <li class="breadcrumb-item"><a href="{% url 'skills:skill_list' %}?category={{ skill.category.slug }}">{{ skill.category.name }}</a></li>
+      {% endif %}
+      <li class="breadcrumb-item active text-truncate" style="max-width:180px;">{{ skill.title }}</li>
+    </ol>
+  </nav>
+
+  <div class="row g-4">
+
+    <!-- Left: Details -->
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm p-4 mb-4">
+        <!-- Header badges -->
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          {% if skill.category %}
+            <span class="badge bg-primary-subtle text-primary">{{ skill.category.name }}</span>
+          {% endif %}
+          {% if skill.delivery_method == 'online' %}
+            <span class="badge bg-success-subtle text-success"><i class="bi bi-camera-video me-1"></i>Online</span>
+          {% elif skill.delivery_method == 'in_person' %}
+            <span class="badge bg-warning-subtle text-warning"><i class="bi bi-geo-alt me-1"></i>In-Person</span>
+          {% elif skill.delivery_method == 'both' %}
+            <span class="badge bg-info-subtle text-info"><i class="bi bi-arrows-angle-expand me-1"></i>Online & In-Person</span>
+          {% endif %}
+          {% if skill.is_featured %}
+            <span class="badge badge-featured"><i class="bi bi-lightning-fill"></i> Featured</span>
+          {% endif %}
+        </div>
+
+        <h1 class="fw-800 mb-3" style="font-size:1.6rem;">{{ skill.title }}</h1>
+
+        <!-- Rating row -->
+        <div class="d-flex align-items-center gap-2 mb-4">
+          {% include 'partials/star_rating.html' with rating=skill.average_rating %}
+          <span class="fw-700">{{ skill.average_rating|floatformat:1 }}</span>
+          <span class="text-muted small">({{ skill.reviews_count }} review{{ skill.reviews_count|pluralize }})</span>
+          <span class="text-muted small ms-2"><i class="bi bi-calendar-check me-1"></i>{{ skill.bookings_count }} booking{{ skill.bookings_count|pluralize }}</span>
+        </div>
+
+        <!-- Description -->
+        <h5 class="fw-700 mb-2">About This Skill</h5>
+        <p class="text-muted" style="white-space:pre-line;">{{ skill.description }}</p>
+
+        <!-- Details grid -->
+        <div class="row g-3 mt-2">
+          {% if skill.duration %}
+            <div class="col-6 col-md-3">
+              <div class="p-3 bg-light rounded-3 text-center">
+                <i class="bi bi-clock text-primary mb-1 d-block fs-4"></i>
+                <div class="fw-700">{{ skill.duration }}</div>
+                <div class="text-muted small">Duration</div>
+              </div>
+            </div>
+          {% endif %}
+          {% if skill.availability %}
+            <div class="col-6 col-md-3">
+              <div class="p-3 bg-light rounded-3 text-center">
+                <i class="bi bi-calendar3 text-primary mb-1 d-block fs-4"></i>
+                <div class="fw-700 small">{{ skill.availability }}</div>
+                <div class="text-muted small">Availability</div>
+              </div>
+            </div>
+          {% endif %}
+          <div class="col-6 col-md-3">
+            <div class="p-3 bg-light rounded-3 text-center">
+              <i class="bi bi-translate text-primary mb-1 d-block fs-4"></i>
+              <div class="fw-700 small">{{ skill.language|default:"English" }}</div>
+              <div class="text-muted small">Language</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="p-3 bg-light rounded-3 text-center">
+              <i class="bi bi-people text-primary mb-1 d-block fs-4"></i>
+              <div class="fw-700">1-on-1</div>
+              <div class="text-muted small">Session Type</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Portfolio -->
+      {% if skill.portfolio_items.all %}
+        <div class="card border-0 shadow-sm p-4 mb-4">
+          <h5 class="fw-700 mb-3"><i class="bi bi-images me-2 text-primary"></i>Portfolio</h5>
+          <div class="row g-2">
+            {% for item in skill.portfolio_items.all %}
+              <div class="col-4 col-md-3">
+                {% if item.image %}
+                  <a href="{{ item.image.url }}" target="_blank">
+                    <img src="{{ item.image.url }}" class="img-fluid rounded-2" style="height:100px;object-fit:cover;width:100%;" alt="{{ item.title }}">
+                  </a>
+                {% elif item.url %}
+                  <a href="{{ item.url }}" target="_blank" class="card border-0 bg-light d-flex align-items-center justify-content-center text-decoration-none"
+                     style="height:100px;border-radius:8px;">
+                    <i class="bi bi-link-45deg text-primary fs-3"></i>
+                    <span class="text-muted small mt-1">{{ item.title|truncatechars:15 }}</span>
+                  </a>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- Reviews -->
+      <div class="card border-0 shadow-sm p-4">
+        <h5 class="fw-700 mb-3"><i class="bi bi-star me-2 text-warning"></i>Reviews</h5>
+        {% if reviews %}
+          {% for review in reviews %}
+            <div class="d-flex gap-3 pb-3 mb-3 border-bottom border-light">
+              {% if review.reviewer.profile_photo %}
+                <img src="{{ review.reviewer.profile_photo.url }}" class="avatar-sm flex-shrink-0" alt="">
+              {% else %}
+                <div class="avatar-sm bg-secondary d-flex align-items-center justify-content-center text-white flex-shrink-0"
+                     style="font-size:.65rem;font-weight:700;">
+                  {{ review.reviewer.display_name|first|upper }}
+                </div>
+              {% endif %}
+              <div class="flex-grow-1">
+                <div class="d-flex justify-content-between flex-wrap gap-1">
+                  <strong>{{ review.reviewer.full_name }}</strong>
+                  <small class="text-muted">{{ review.created_at|date:"M d, Y" }}</small>
+                </div>
+                {% include 'partials/star_rating.html' with rating=review.rating %}
+                <p class="mt-2 mb-0 text-muted small">{{ review.comment }}</p>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          {% include 'partials/empty_state.html' with icon="bi-chat-square-text" title="No reviews yet" message="Be the first to book and review this skill." %}
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Right: Booking sidebar -->
+    <div class="col-lg-4">
+
+      <!-- Price card -->
+      <div class="card border-0 shadow-sm p-4 mb-3 sticky-top" style="top:80px;">
+        <p class="text-muted small fw-600 mb-1">PRICE PER SESSION</p>
+        <h2 class="fw-800 text-primary mb-0">
+          UGX {{ skill.min_price|floatformat:"0" }}
+          {% if skill.max_price %}<span class="text-muted fw-400 fs-5"> – UGX {{ skill.max_price|floatformat:"0" }}</span>{% endif %}
+        </h2>
+
+        {% if user.is_authenticated and user != skill.provider %}
+          <button class="btn btn-primary btn-lg fw-600 w-100 mt-4"
+                  data-bs-toggle="modal" data-bs-target="#bookingModal">
+            <i class="bi bi-calendar-check me-2"></i>Book a Session
+          </button>
+          <a href="{% url 'messaging:conversation' skill.provider.pk %}?skill={{ skill.pk }}"
+             class="btn btn-outline-primary w-100 mt-2 fw-600">
+            <i class="bi bi-chat-dots me-2"></i>Message Provider
+          </a>
+        {% elif user == skill.provider %}
+          <a href="{% url 'skills:skill_edit' skill.pk %}" class="btn btn-outline-primary w-100 mt-4 fw-600">
+            <i class="bi bi-pencil me-2"></i>Edit Skill
+          </a>
+        {% else %}
+          <a href="{% url 'accounts:login' %}?next={{ request.path }}" class="btn btn-primary btn-lg w-100 mt-4 fw-600">
+            Login to Book
+          </a>
+        {% endif %}
+
+        <hr class="my-3">
+
+        <!-- Provider mini-card -->
+        <p class="text-muted small fw-600 mb-2">PROVIDER</p>
+        <div class="d-flex align-items-center gap-3 mb-3">
+          {% if skill.provider.profile_photo %}
+            <img src="{{ skill.provider.profile_photo.url }}" class="avatar-lg" alt="">
+          {% else %}
+            <div class="avatar-lg bg-primary d-flex align-items-center justify-content-center text-white fw-800"
+                 style="font-size:1.4rem;">
+              {{ skill.provider.display_name|first|upper }} }}
+            </div>
+          {% endif %}
+          <div>
+            <div class="d-flex align-items-center gap-1">
+              <strong>{{ skill.provider.full_name }}</strong>
+              {% if skill.provider.is_verified %}<i class="bi bi-patch-check-fill text-primary"></i>{% endif %}
+            </div>
+            <div class="text-muted small">{{ skill.provider.university|default:"University" }}</div>
+            <div class="d-flex align-items-center gap-1 mt-1">
+              {% include 'partials/star_rating.html' with rating=skill.provider.average_rating %}
+            </div>
+          </div>
+        </div>
+        <a href="{% url 'accounts:profile' skill.provider.username %}" class="btn btn-outline-secondary btn-sm w-100">View Full Profile</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Booking Modal -->
+{% if user.is_authenticated and user != skill.provider %}
+<div class="modal fade" id="bookingModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-700"><i class="bi bi-calendar-check me-2 text-primary"></i>Book a Session</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form method="post" action="{% url 'skills:booking_request' skill.pk %}" novalidate>
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label fw-600">Preferred Date & Time</label>
+            <input type="datetime-local" name="scheduled_at" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Message to Provider</label>
+            <textarea name="message" class="form-control" rows="3"
+                      placeholder="Describe what you need help with..."></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Preferred Delivery</label>
+            <select name="delivery_preference" class="form-select">
+              {% if skill.delivery_method == 'online' or skill.delivery_method == 'both' %}
+                <option value="online">Online</option>
+              {% endif %}
+              {% if skill.delivery_method == 'in_person' or skill.delivery_method == 'both' %}
+                <option value="in_person">In-Person</option>
+              {% endif %}
+            </select>
+          </div>
+          <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded-3">
+            <span class="fw-600">Session Price</span>
+            <span class="fw-800 text-primary fs-5">UGX {{ skill.min_price|floatformat:"0" }}</span>
+          </div>
+          <button type="submit" class="btn btn-primary fw-600 w-100 py-2">
+            <i class="bi bi-send me-2"></i>Send Booking Request
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

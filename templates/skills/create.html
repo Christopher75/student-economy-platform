@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+{% block title %}{% if action == 'Edit' %}Edit Skill{% else %}Offer a Skill{% endif %} – Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-10 col-lg-8">
+
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="{% url 'skills:skill_list' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+        <div>
+          <h2 class="fw-800 mb-0">{% if action == 'Edit' %}Edit Skill Offering{% else %}Offer a Skill{% endif %}</h2>
+          <p class="text-muted mb-0 small">Share your expertise with fellow students</p>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm p-4">
+        <form method="post" enctype="multipart/form-data" novalidate>
+          {% csrf_token %}
+
+          <div class="row g-3">
+            <!-- Title -->
+            <div class="col-12">
+              <label class="form-label fw-600">Skill Title <span class="text-danger">*</span></label>
+              <input type="text" name="{{ form.title.html_name }}"
+                     class="form-control{% if form.title.errors %} is-invalid{% endif %}"
+                     value="{{ form.title.value|default:'' }}"
+                     placeholder="e.g. Python Programming Tutoring, Logo Design, Essay Editing"
+                     required>
+              {% if form.title.errors %}<div class="invalid-feedback">{{ form.title.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <!-- Category -->
+            <div class="col-md-6">
+              <label class="form-label fw-600">Category <span class="text-danger">*</span></label>
+              <select name="{{ form.category.html_name }}"
+                      class="form-select{% if form.category.errors %} is-invalid{% endif %}" required>
+                <option value="">Select category...</option>
+                {% for cat in form.category.field.queryset %}
+                  <option value="{{ cat.pk }}" {% if form.category.value == cat.pk|stringformat:"i" %}selected{% endif %}>
+                    {{ cat.name }}
+                  </option>
+                {% endfor %}
+              </select>
+              {% if form.category.errors %}<div class="invalid-feedback">{{ form.category.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <!-- Delivery method -->
+            <div class="col-md-6">
+              <label class="form-label fw-600">Delivery Method <span class="text-danger">*</span></label>
+              <select name="{{ form.delivery_method.html_name }}"
+                      class="form-select{% if form.delivery_method.errors %} is-invalid{% endif %}" required>
+                {% for val, label in form.delivery_method.field.choices %}
+                  <option value="{{ val }}" {% if form.delivery_method.value == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              {% if form.delivery_method.errors %}<div class="invalid-feedback">{{ form.delivery_method.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <!-- Price type -->
+            <div class="col-md-4">
+              <label class="form-label fw-600">Price Type <span class="text-danger">*</span></label>
+              <select name="{{ form.price_type.html_name }}"
+                      class="form-select{% if form.price_type.errors %} is-invalid{% endif %}" required>
+                {% for val, label in form.price_type.field.choices %}
+                  <option value="{{ val }}" {% if form.price_type.value == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              {% if form.price_type.errors %}<div class="invalid-feedback">{{ form.price_type.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <!-- Min Price -->
+            <div class="col-md-4">
+              <label class="form-label fw-600">Min Price (UGX) <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text bg-light">UGX</span>
+                <input type="number" name="{{ form.price_min.html_name }}"
+                       class="form-control{% if form.price_min.errors %} is-invalid{% endif %}"
+                       value="{{ form.price_min.value|default:'' }}"
+                       placeholder="5000" min="0" step="1">
+              </div>
+              {% if form.price_min.errors %}<div class="invalid-feedback d-block">{{ form.price_min.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <!-- Max Price -->
+            <div class="col-md-4">
+              <label class="form-label fw-600">Max Price (UGX) <span class="text-muted fw-400">(optional)</span></label>
+              <div class="input-group">
+                <span class="input-group-text bg-light">UGX</span>
+                <input type="number" name="{{ form.price_max.html_name }}"
+                       class="form-control{% if form.price_max.errors %} is-invalid{% endif %}"
+                       value="{{ form.price_max.value|default:'' }}"
+                       placeholder="20000" min="0" step="1">
+              </div>
+              {% if form.price_max.errors %}<div class="invalid-feedback d-block">{{ form.price_max.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <!-- Duration -->
+            <div class="col-md-6">
+              <label class="form-label fw-600">Session Duration <span class="text-muted fw-400">(optional)</span></label>
+              <input type="text" name="{{ form.estimated_duration.html_name }}"
+                     class="form-control{% if form.estimated_duration.errors %} is-invalid{% endif %}"
+                     value="{{ form.estimated_duration.value|default:'' }}"
+                     placeholder="e.g. 1 hour, 2 hours">
+              {% if form.estimated_duration.errors %}<div class="invalid-feedback">{{ form.estimated_duration.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <!-- University -->
+            <div class="col-md-6">
+              <label class="form-label fw-600">University <span class="text-muted fw-400">(optional)</span></label>
+              <input type="text" name="{{ form.university.html_name }}"
+                     class="form-control{% if form.university.errors %} is-invalid{% endif %}"
+                     value="{{ form.university.value|default:'' }}"
+                     placeholder="Your university">
+              {% if form.university.errors %}<div class="invalid-feedback">{{ form.university.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <!-- Availability -->
+            <div class="col-12">
+              <label class="form-label fw-600">Availability <span class="text-muted fw-400">(optional)</span></label>
+              <textarea name="{{ form.availability.html_name }}"
+                        class="form-control{% if form.availability.errors %} is-invalid{% endif %}"
+                        rows="2"
+                        placeholder="e.g. Weekends, Evenings only, Monday-Wednesday 4-8pm">{{ form.availability.value|default:'' }}</textarea>
+              {% if form.availability.errors %}<div class="invalid-feedback">{{ form.availability.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <!-- Description -->
+            <div class="col-12">
+              <label class="form-label fw-600">Description <span class="text-danger">*</span></label>
+              <textarea name="{{ form.description.html_name }}"
+                        class="form-control{% if form.description.errors %} is-invalid{% endif %}"
+                        rows="5"
+                        placeholder="Describe your skill, your experience, what students can expect from your sessions...">{{ form.description.value|default:'' }}</textarea>
+              {% if form.description.errors %}<div class="invalid-feedback">{{ form.description.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <!-- Portfolio images -->
+            <div class="col-12">
+              <label class="form-label fw-600">Portfolio Images <span class="text-muted fw-400">(optional, up to 5)</span></label>
+              <input type="file" name="portfolio_images" multiple accept="image/*" class="form-control" id="portfolioInput">
+              <div class="form-text">Showcase your work to attract more bookings.</div>
+              <div class="d-flex gap-2 flex-wrap mt-2" id="portfolioPreviews"></div>
+            </div>
+          </div>
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger mt-3">{{ form.non_field_errors|join:", " }}</div>
+          {% endif %}
+
+          <div class="d-flex gap-3 mt-4">
+            <button type="submit" class="btn btn-primary fw-600 px-5 py-2">
+              <i class="bi bi-stars me-2"></i>{% if action == 'Edit' %}Save Changes{% else %}Post Skill{% endif %}
+            </button>
+            <a href="{% url 'skills:skill_list' %}" class="btn btn-outline-secondary px-4">Cancel</a>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const portfolioInput = document.getElementById('portfolioInput');
+  if (portfolioInput) {
+    portfolioInput.addEventListener('change', function() {
+      const container = document.getElementById('portfolioPreviews');
+      container.innerHTML = '';
+      Array.from(this.files).slice(0, 5).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const img = document.createElement('img');
+          img.src = e.target.result;
+          img.className = 'rounded-2 border';
+          img.style.cssText = 'width:70px;height:70px;object-fit:cover;';
+          container.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+  }
+</script>
+{% endblock %}

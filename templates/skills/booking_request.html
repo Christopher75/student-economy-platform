@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% block title %}Book {{ skill.title }} – Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8 col-lg-7">
+
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="{% url 'skills:skill_detail' skill.pk %}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-arrow-left"></i>
+        </a>
+        <div>
+          <h2 class="fw-800 mb-0">Book a Session</h2>
+          <p class="text-muted mb-0 small">Send a booking request to {{ skill.provider.display_name }}</p>
+        </div>
+      </div>
+
+      <!-- Skill summary card -->
+      <div class="card border-0 shadow-sm p-4 mb-4">
+        <div class="d-flex gap-3 align-items-center">
+          {% if skill.provider.profile_photo %}
+            <img src="{{ skill.provider.profile_photo.url }}" class="avatar-lg" alt="">
+          {% else %}
+            <div class="avatar-lg bg-primary d-flex align-items-center justify-content-center text-white fw-800"
+                 style="font-size:1.4rem;">
+              {{ skill.provider.display_name|first|upper }}
+            </div>
+          {% endif %}
+          <div>
+            <h5 class="fw-700 mb-1">{{ skill.title }}</h5>
+            <p class="text-muted mb-1 small">by {{ skill.provider.full_name }}</p>
+            {% if skill.price_min %}
+              <span class="fw-700 text-primary">UGX {{ skill.price_min|floatformat:"0" }}
+                {% if skill.price_max %} – UGX {{ skill.price_max|floatformat:"0" }}{% endif %}
+              </span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Booking form -->
+      <div class="card border-0 shadow-sm p-4">
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          <div class="row g-3">
+            <!-- Requested date -->
+            <div class="col-12">
+              <label class="form-label fw-600">Requested Date <span class="text-danger">*</span></label>
+              <input type="date" name="{{ form.requested_date.html_name }}"
+                     class="form-control{% if form.requested_date.errors %} is-invalid{% endif %}"
+                     value="{{ form.requested_date.value|default:'' }}" required>
+              {% if form.requested_date.errors %}
+                <div class="invalid-feedback">{{ form.requested_date.errors|join:", " }}</div>
+              {% endif %}
+            </div>
+
+            <!-- Agreed price -->
+            <div class="col-12">
+              <label class="form-label fw-600">Agreed Price (UGX) <span class="text-muted fw-400">(optional)</span></label>
+              <div class="input-group">
+                <span class="input-group-text bg-light">UGX</span>
+                <input type="number" name="{{ form.price_agreed.html_name }}"
+                       class="form-control{% if form.price_agreed.errors %} is-invalid{% endif %}"
+                       value="{{ form.price_agreed.value|default:'' }}"
+                       placeholder="Leave blank to discuss with provider" min="0" step="1">
+              </div>
+              {% if form.price_agreed.errors %}
+                <div class="invalid-feedback d-block">{{ form.price_agreed.errors|join:", " }}</div>
+              {% endif %}
+            </div>
+
+            <!-- Notes -->
+            <div class="col-12">
+              <label class="form-label fw-600">Message to Provider <span class="text-danger">*</span></label>
+              <textarea name="{{ form.notes.html_name }}"
+                        class="form-control{% if form.notes.errors %} is-invalid{% endif %}"
+                        rows="4"
+                        placeholder="Describe what you need help with, any specific requirements, your schedule, etc."
+                        required>{{ form.notes.value|default:'' }}</textarea>
+              {% if form.notes.errors %}
+                <div class="invalid-feedback">{{ form.notes.errors|join:", " }}</div>
+              {% endif %}
+            </div>
+          </div>
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger mt-3">{{ form.non_field_errors|join:", " }}</div>
+          {% endif %}
+
+          <div class="d-flex gap-3 mt-4">
+            <button type="submit" class="btn btn-primary fw-600 px-5 py-2">
+              <i class="bi bi-send me-2"></i>Send Booking Request
+            </button>
+            <a href="{% url 'skills:skill_detail' skill.pk %}" class="btn btn-outline-secondary px-4">Cancel</a>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

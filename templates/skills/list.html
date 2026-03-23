@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+{% block title %}Skills Exchange – Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Heading + search -->
+  <div class="row align-items-center mb-4 g-3">
+    <div class="col-md-6">
+      <h2 class="fw-800 mb-0"><i class="bi bi-lightbulb me-2 text-primary"></i>Skills Exchange</h2>
+      <p class="text-muted mb-0 small">{{ total_skills|default:0 }} skill{{ total_skills|pluralize }} available</p>
+    </div>
+    <div class="col-md-6">
+      <form method="get" class="d-flex gap-2">
+        <input type="text" name="q" value="{{ request.GET.q }}"
+               class="form-control" placeholder="Search skills...">
+        <button type="submit" class="btn btn-primary px-3"><i class="bi bi-search"></i></button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Active filters -->
+  {% if request.GET.q or request.GET.category or request.GET.delivery %}
+    <div class="d-flex flex-wrap gap-2 mb-3">
+      <span class="text-muted small fw-600 align-self-center">Filters:</span>
+      {% if request.GET.q %}
+        <a href="?{% for k,v in request.GET.items %}{% if k != 'q' and k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}"
+           class="badge bg-primary-subtle text-primary text-decoration-none">"{{ request.GET.q }}" <i class="bi bi-x ms-1"></i></a>
+      {% endif %}
+      {% if request.GET.category %}
+        <a href="?{% for k,v in request.GET.items %}{% if k != 'category' and k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}"
+           class="badge bg-primary-subtle text-primary text-decoration-none">{{ request.GET.category }} <i class="bi bi-x ms-1"></i></a>
+      {% endif %}
+      <a href="{% url 'skills:skill_list' %}" class="badge bg-danger-subtle text-danger text-decoration-none">Clear All <i class="bi bi-x-circle ms-1"></i></a>
+    </div>
+  {% endif %}
+
+  <div class="row g-4">
+
+    <!-- Filter Sidebar -->
+    <div class="col-lg-3 d-none d-lg-block">
+      <form method="get" id="skillFilterForm">
+        <input type="hidden" name="q" value="{{ request.GET.q }}">
+        <div class="filter-sidebar p-3">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-700 mb-0">Filters</h6>
+            <a href="{% url 'skills:skill_list' %}" class="text-muted small">Clear</a>
+          </div>
+
+          <!-- Category -->
+          <div class="mb-4">
+            <p class="filter-title mb-2">Skill Category</p>
+            {% for cat in skill_categories %}
+              <div class="form-check mb-1">
+                <input class="form-check-input" type="radio" name="category"
+                       id="scat_{{ cat.slug }}" value="{{ cat.slug }}"
+                       {% if request.GET.category == cat.slug %}checked{% endif %}
+                       onchange="document.getElementById('skillFilterForm').submit()">
+                <label class="form-check-label small" for="scat_{{ cat.slug }}">
+                  {{ cat.name }}
+                </label>
+              </div>
+            {% empty %}
+              <p class="text-muted small">No categories.</p>
+            {% endfor %}
+          </div>
+
+          <!-- Delivery Method -->
+          <div class="mb-4">
+            <p class="filter-title mb-2">Delivery Method</p>
+            <div class="form-check mb-1">
+              <input class="form-check-input" type="radio" name="delivery" id="del_online" value="online"
+                     {% if request.GET.delivery == 'online' %}checked{% endif %}
+                     onchange="document.getElementById('skillFilterForm').submit()">
+              <label class="form-check-label small" for="del_online"><i class="bi bi-camera-video me-1"></i>Online</label>
+            </div>
+            <div class="form-check mb-1">
+              <input class="form-check-input" type="radio" name="delivery" id="del_person" value="in_person"
+                     {% if request.GET.delivery == 'in_person' %}checked{% endif %}
+                     onchange="document.getElementById('skillFilterForm').submit()">
+              <label class="form-check-label small" for="del_person"><i class="bi bi-geo-alt me-1"></i>In-Person</label>
+            </div>
+            <div class="form-check mb-1">
+              <input class="form-check-input" type="radio" name="delivery" id="del_both" value="both"
+                     {% if request.GET.delivery == 'both' %}checked{% endif %}
+                     onchange="document.getElementById('skillFilterForm').submit()">
+              <label class="form-check-label small" for="del_both"><i class="bi bi-intersect me-1"></i>Flexible</label>
+            </div>
+          </div>
+
+          <!-- Price Range -->
+          <div class="mb-4">
+            <p class="filter-title mb-2">Price (UGX /session)</p>
+            <div class="d-flex gap-2">
+              <input type="number" name="min_price" value="{{ request.GET.min_price }}"
+                     class="form-control form-control-sm" placeholder="Min">
+              <input type="number" name="max_price" value="{{ request.GET.max_price }}"
+                     class="form-control form-control-sm" placeholder="Max">
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 fw-600 btn-sm">
+            <i class="bi bi-funnel me-1"></i>Apply
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Main content -->
+    <div class="col-lg-9">
+      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <button class="btn btn-outline-secondary btn-sm d-lg-none" data-bs-toggle="offcanvas" data-bs-target="#mobileSkillFilters">
+          <i class="bi bi-funnel me-1"></i>Filters
+        </button>
+        <form method="get" class="d-flex align-items-center gap-2 ms-auto">
+          {% for k,v in request.GET.items %}{% if k != 'sort' %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
+          <label class="text-muted small mb-0">Sort by:</label>
+          <select name="sort" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+            <option value="-created_at" {% if request.GET.sort == '-created_at' %}selected{% endif %}>Newest</option>
+            <option value="min_price" {% if request.GET.sort == 'min_price' %}selected{% endif %}>Price: Low – High</option>
+            <option value="-min_price" {% if request.GET.sort == '-min_price' %}selected{% endif %}>Price: High – Low</option>
+            <option value="-average_rating" {% if request.GET.sort == '-average_rating' %}selected{% endif %}>Top Rated</option>
+          </select>
+        </form>
+      </div>
+
+      {% if skills %}
+        <div class="row g-3">
+          {% for skill in skills %}
+            <div class="col-6 col-md-4 col-lg-4">
+              {% include 'partials/skill_card.html' with skill=skill %}
+            </div>
+          {% endfor %}
+        </div>
+        {% include 'partials/pagination.html' with page_obj=skills request=request %}
+      {% else %}
+        {% include 'partials/empty_state.html' with icon="bi-lightbulb" title="No skills found" message="Try adjusting your search or filters." %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Mobile filter offcanvas -->
+<div class="offcanvas offcanvas-start" tabindex="-1" id="mobileSkillFilters">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title fw-700">Filters</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body">
+    <form method="get">
+      <input type="hidden" name="q" value="{{ request.GET.q }}">
+      <div class="mb-4">
+        <p class="filter-title mb-2">Category</p>
+        {% for cat in skill_categories %}
+          <div class="form-check mb-1">
+            <input class="form-check-input" type="radio" name="category"
+                   value="{{ cat.slug }}" {% if request.GET.category == cat.slug %}checked{% endif %}>
+            <label class="form-check-label small">{{ cat.name }}</label>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="mb-4">
+        <p class="filter-title mb-2">Delivery</p>
+        <div class="form-check mb-1">
+          <input class="form-check-input" type="radio" name="delivery" value="online" {% if request.GET.delivery == 'online' %}checked{% endif %}>
+          <label class="form-check-label small">Online</label>
+        </div>
+        <div class="form-check mb-1">
+          <input class="form-check-input" type="radio" name="delivery" value="in_person" {% if request.GET.delivery == 'in_person' %}checked{% endif %}>
+          <label class="form-check-label small">In-Person</label>
+        </div>
+      </div>
+      <div class="mb-4">
+        <p class="filter-title mb-2">Price (UGX )</p>
+        <div class="d-flex gap-2">
+          <input type="number" name="min_price" value="{{ request.GET.min_price }}" class="form-control form-control-sm" placeholder="Min">
+          <input type="number" name="max_price" value="{{ request.GET.max_price }}" class="form-control form-control-sm" placeholder="Max">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary w-100 fw-600">Apply</button>
+      <a href="{% url 'skills:skill_list' %}" class="btn btn-outline-secondary w-100 mt-2">Clear All</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block title %}Login – Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-sm-10 col-md-7 col-lg-5">
+
+      <div class="text-center mb-4">
+        <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-3 mb-3"
+             style="width:56px;height:56px;font-size:1.6rem;">
+          <i class="bi bi-person-fill"></i>
+        </div>
+        <h2 class="fw-800">Welcome back</h2>
+        <p class="text-muted">Sign in to your student account</p>
+      </div>
+
+      <div class="card border-0 shadow-sm p-4">
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          <div class="mb-3">
+            <label for="id_username" class="form-label fw-600">Email Address</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light border-end-0"><i class="bi bi-envelope text-muted"></i></span>
+              <input type="email" name="username" id="id_username"
+                     class="form-control border-start-0 ps-0{% if form.username.errors %} is-invalid{% endif %}"
+                     placeholder="your@university.edu"
+                     value="{{ form.username.value|default:'' }}"
+                     autocomplete="email" required>
+            </div>
+            {% if form.username.errors %}
+              <div class="invalid-feedback d-block">{{ form.username.errors|join:", " }}</div>
+            {% endif %}
+          </div>
+
+          <div class="mb-3">
+            <div class="d-flex justify-content-between">
+              <label for="id_password" class="form-label fw-600">Password</label>
+              <a href="{% url 'accounts:password_reset' %}" class="text-primary small">Forgot password?</a>
+            </div>
+            <div class="input-group">
+              <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock text-muted"></i></span>
+              <input type="password" name="password" id="id_password"
+                     class="form-control border-start-0 ps-0{% if form.password.errors %} is-invalid{% endif %}"
+                     placeholder="••••••••"
+                     autocomplete="current-password" required>
+              <button class="btn btn-outline-secondary border-start-0" type="button" id="togglePassword">
+                <i class="bi bi-eye" id="eyeIcon"></i>
+              </button>
+            </div>
+            {% if form.password.errors %}
+              <div class="invalid-feedback d-block">{{ form.password.errors|join:", " }}</div>
+            {% endif %}
+          </div>
+
+          <div class="form-check mb-4">
+            <input class="form-check-input" type="checkbox" name="remember_me" id="remember_me">
+            <label class="form-check-label text-muted" for="remember_me">Keep me signed in</label>
+          </div>
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger d-flex align-items-center gap-2 mb-3">
+              <i class="bi bi-x-circle-fill"></i>
+              {{ form.non_field_errors|join:", " }}
+            </div>
+          {% endif %}
+
+          <button type="submit" class="btn btn-primary w-100 fw-600 py-2">
+            <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+          </button>
+        </form>
+
+        <hr class="my-4">
+
+        <p class="text-center mb-0 text-muted">
+          New to SEP?
+          <a href="{% url 'accounts:register' %}" class="text-primary fw-600">Create a free account</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.getElementById('togglePassword').addEventListener('click', function() {
+    const pw = document.getElementById('id_password');
+    const icon = document.getElementById('eyeIcon');
+    if (pw.type === 'password') {
+      pw.type = 'text';
+      icon.className = 'bi bi-eye-slash';
+    } else {
+      pw.type = 'password';
+      icon.className = 'bi bi-eye';
+    }
+  });
+</script>
+{% endblock %}

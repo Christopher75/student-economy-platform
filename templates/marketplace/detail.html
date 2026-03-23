@@ -1,0 +1,225 @@
+{% extends 'base.html' %}
+{% block title %}{{ listing.title }} – Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb small">
+      <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'marketplace:listing_list' %}">Marketplace</a></li>
+      {% if listing.category %}
+        <li class="breadcrumb-item"><a href="{% url 'marketplace:listing_list' %}?category={{ listing.category.slug }}">{{ listing.category.name }}</a></li>
+      {% endif %}
+      <li class="breadcrumb-item active text-truncate" style="max-width:200px;">{{ listing.title }}</li>
+    </ol>
+  </nav>
+
+  <div class="row g-4">
+
+    <!-- Photo Gallery -->
+    <div class="col-lg-7">
+      <!-- Main photo -->
+      <div class="mb-3">
+        {% if listing.photos.all %}
+          <img src="{{ listing.photos.first.image.url }}" alt="{{ listing.title }}"
+               id="mainPhoto"
+               class="img-fluid rounded-3 w-100"
+               style="max-height:420px;object-fit:cover;">
+        {% else %}
+          <div class="bg-light rounded-3 d-flex align-items-center justify-content-center w-100"
+               style="height:360px;">
+            <i class="bi bi-image text-secondary" style="font-size:5rem;"></i>
+          </div>
+        {% endif %}
+      </div>
+      <!-- Thumbnails -->
+      {% if listing.photos.count > 1 %}
+        <div class="d-flex gap-2 flex-wrap">
+          {% for photo in listing.photos.all %}
+            <img src="{{ photo.image.url }}"
+                 class="rounded-2 border thumbnail-btn {% if forloop.first %}border-primary{% endif %}"
+                 style="width:70px;height:70px;object-fit:cover;cursor:pointer;"
+                 onclick="document.getElementById('mainPhoto').src='{{ photo.image.url }}';
+                          document.querySelectorAll('.thumbnail-btn').forEach(t=>t.classList.remove('border-primary'));
+                          this.classList.add('border-primary');"
+                 alt="Photo {{ forloop.counter }}">
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Listing Info -->
+    <div class="col-lg-5">
+      <!-- Status + badges -->
+      <div class="d-flex flex-wrap gap-2 mb-2">
+        {% if listing.status == 'available' %}
+          <span class="badge bg-success">Available</span>
+        {% elif listing.status == 'sold' %}
+          <span class="badge bg-secondary">Sold</span>
+        {% elif listing.status == 'reserved' %}
+          <span class="badge bg-warning text-dark">Reserved</span>
+        {% endif %}
+        <span class="badge bg-secondary">{{ listing.get_condition_display }}</span>
+        {% if listing.is_featured %}
+          <span class="badge badge-featured"><i class="bi bi-lightning-fill"></i> Featured</span>
+        {% endif %}
+        {% if listing.is_negotiable %}
+          <span class="badge bg-success-subtle text-success">Negotiable</span>
+        {% endif %}
+      </div>
+
+      <h1 class="fw-800 mb-2" style="font-size:1.5rem;">{{ listing.title }}</h1>
+
+      <p class="fw-800 text-primary mb-3" style="font-size:2rem;">
+        UGX {{ listing.price|floatformat:"0" }}
+      </p>
+
+      {% if listing.category %}
+        <p class="text-muted small mb-3">
+          <i class="bi bi-tag me-1"></i>
+          <a href="{% url 'marketplace:listing_list' %}?category={{ listing.category.slug }}" class="text-muted">
+            {{ listing.category.name }}
+          </a>
+        </p>
+      {% endif %}
+
+      <!-- Views & date -->
+      <div class="d-flex gap-3 text-muted small mb-4">
+        <span><i class="bi bi-eye me-1"></i>{{ listing.views_count|default:0 }} views</span>
+        <span><i class="bi bi-clock me-1"></i>{{ listing.created_at|timesince }} ago</span>
+      </div>
+
+      <!-- Actions -->
+      {% if listing.status == 'available' %}
+        {% if user != listing.seller %}
+          <div class="d-grid gap-2 mb-3">
+            <a href="{% url 'messaging:start_for_listing' listing.pk %}"
+               class="btn btn-primary btn-lg fw-600">
+              <i class="bi bi-chat-dots me-2"></i>Contact Seller
+            </a>
+          </div>
+        {% endif %}
+      {% endif %}
+
+      <!-- Save button -->
+      {% if user.is_authenticated and user != listing.seller %}
+        <form method="post" action="{% url 'marketplace:toggle_save' listing.pk %}" class="mb-3">
+          {% csrf_token %}
+          <button type="submit"
+                  class="btn btn-outline-{% if is_saved %}danger{% else %}secondary{% endif %} w-100 fw-600">
+            {% if is_saved %}
+              <i class="bi bi-bookmark-fill me-2"></i>Remove from Wishlist
+            {% else %}
+              <i class="bi bi-bookmark me-2"></i>Save to Wishlist
+            {% endif %}
+          </button>
+        </form>
+      {% endif %}
+
+      {% if user == listing.seller %}
+        <div class="d-flex gap-2 mb-3">
+          <a href="{% url 'marketplace:listing_edit' listing.pk %}" class="btn btn-outline-primary flex-grow-1 fw-600">
+            <i class="bi bi-pencil me-1"></i>Edit
+          </a>
+          <a href="{% url 'marketplace:listing_delete' listing.pk %}" class="btn btn-outline-danger fw-600 px-3">
+            <i class="bi bi-trash"></i>
+          </a>
+        </div>
+      {% endif %}
+
+      <!-- Seller Card -->
+      <div class="card border-0 shadow-sm p-3 mt-3">
+        <p class="text-muted small fw-600 mb-2">SELLER</p>
+        <div class="d-flex align-items-center gap-3">
+          {% if listing.seller.profile_photo %}
+            <img src="{{ listing.seller.profile_photo.url }}" class="avatar-lg" alt="{{ listing.seller.full_name }}">
+          {% else %}
+            <div class="avatar-lg bg-primary d-flex align-items-center justify-content-center text-white fw-800"
+                 style="font-size:1.5rem;">
+              {{ listing.seller.display_name|first|upper }}
+            </div>
+          {% endif %}
+          <div>
+            <div class="d-flex align-items-center gap-2">
+              <strong>{{ listing.seller.full_name }}</strong>
+              {% if listing.seller.is_verified %}
+                <i class="bi bi-patch-check-fill text-primary" title="Verified Student"></i>
+              {% endif %}
+            </div>
+            <div class="text-muted small">{{ listing.seller.university|default:"University" }}</div>
+            <div class="d-flex align-items-center gap-1 mt-1">
+              {% include 'partials/star_rating.html' with rating=listing.seller.average_rating %}
+              <span class="text-muted" style="font-size:.75rem;">({{ listing.seller.reviews_count }})</span>
+            </div>
+          </div>
+        </div>
+        <a href="{% url 'accounts:profile' listing.seller.username %}" class="btn btn-outline-secondary btn-sm mt-3 fw-600">
+          View Profile
+        </a>
+      </div>
+
+      <!-- Report link -->
+      <div class="text-center mt-3">
+        <a href="#" class="text-muted small" data-bs-toggle="modal" data-bs-target="#reportModal">
+          <i class="bi bi-flag me-1"></i>Report this listing
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Description -->
+  <div class="card border-0 shadow-sm p-4 mt-4">
+    <h5 class="fw-700 mb-3"><i class="bi bi-file-text me-2 text-primary"></i>Description</h5>
+    <p class="text-muted" style="white-space:pre-line;">{{ listing.description }}</p>
+  </div>
+
+  <!-- Related Listings -->
+  {% if related_listings %}
+    <div class="mt-5">
+      <h5 class="fw-700 mb-3">Related Listings</h5>
+      <div class="d-flex gap-3 overflow-auto pb-2" style="-webkit-overflow-scrolling:touch;">
+        {% for rel in related_listings %}
+          <div style="min-width:200px;max-width:220px;">
+            {% include 'partials/listing_card.html' with listing=rel %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<!-- Report Modal -->
+<div class="modal fade" id="reportModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-700"><i class="bi bi-flag me-2 text-danger"></i>Report Listing</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form method="post" action="#">
+          {% csrf_token %}
+          <input type="hidden" name="listing_id" value="{{ listing.pk }}">
+          <div class="mb-3">
+            <label class="form-label fw-600">Reason</label>
+            <select name="reason" class="form-select" required>
+              <option value="">Select a reason</option>
+              <option value="spam">Spam or misleading</option>
+              <option value="inappropriate">Inappropriate content</option>
+              <option value="scam">Potential scam</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Additional Details</label>
+            <textarea name="details" class="form-control" rows="3" placeholder="Please provide more context..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-danger fw-600">Submit Report</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

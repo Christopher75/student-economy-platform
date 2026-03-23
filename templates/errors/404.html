@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}404 – Lost on Campus? | Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center text-center">
+    <div class="col-sm-10 col-md-7 col-lg-5">
+      <div class="py-5">
+        <!-- Illustration -->
+        <div class="mb-4" style="font-size:6rem;line-height:1;">🗺️</div>
+
+        <h1 class="fw-800 mb-2" style="font-size:5rem;color:#e2e8f0;">404</h1>
+        <h2 class="fw-700 mb-3">Lost on Campus?</h2>
+        <p class="text-muted mb-5">
+          Looks like this page wandered off to another faculty.
+          Let's get you back on track!
+        </p>
+
+        <div class="d-flex flex-wrap gap-3 justify-content-center">
+          <a href="{% url 'home' %}" class="btn btn-primary fw-600 px-4">
+            <i class="bi bi-house me-2"></i>Back to Home
+          </a>
+          <a href="{% url 'marketplace:listing_list' %}" class="btn btn-outline-primary fw-600 px-4">
+            <i class="bi bi-bag me-2"></i>Browse Marketplace
+          </a>
+        </div>
+
+        <div class="mt-5 p-3 bg-light rounded-3">
+          <p class="text-muted small mb-2">Or try searching for what you need:</p>
+          <form method="get" action="{% url 'marketplace:listing_list' %}" class="d-flex gap-2">
+            <input type="text" name="q" class="form-control" placeholder="Search listings...">
+            <button type="submit" class="btn btn-primary px-3"><i class="bi bi-search"></i></button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
