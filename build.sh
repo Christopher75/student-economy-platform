@@ -13,11 +13,21 @@ python manage.py migrate
 python manage.py shell -c "
 from accounts.models import CustomUser
 if not CustomUser.objects.filter(is_superuser=True).exists():
-    CustomUser.objects.create_superuser(
+    u = CustomUser(
         email='$ADMIN_EMAIL',
-        password='$ADMIN_PASSWORD',
+        username='admin',
         full_name='Admin',
+        student_id='ADMIN001',
+        university='Cavendish University Uganda',
+        course='Administration',
+        phone_number='0000000000',
+        is_staff=True,
+        is_superuser=True,
+        is_email_verified=True,
+        is_verified=True,
     )
+    u.set_password('$ADMIN_PASSWORD')
+    u.save()
     print('Superuser created.')
 else:
     print('Superuser already exists.')
