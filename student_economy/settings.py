@@ -125,21 +125,15 @@ if CLOUDINARY_CLOUD_NAME:
         'API_KEY': CLOUDINARY_API_KEY,
         'API_SECRET': CLOUDINARY_API_SECRET,
     }
+    STORAGES = {
+        'default': {
+            'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
+        },
+        'staticfiles': {
+            'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+        },
+    }
     MEDIA_URL = f'https://res.cloudinary.com/{CLOUDINARY_CLOUD_NAME}/'
-
-# ── Storage backends (Django 4.2+ STORAGES replaces STATICFILES_STORAGE / DEFAULT_FILE_STORAGE)
-STORAGES = {
-    'staticfiles': {
-        'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
-    },
-    'default': {
-        'BACKEND': (
-            'cloudinary_storage.storage.MediaCloudinaryStorage'
-            if CLOUDINARY_CLOUD_NAME else
-            'django.core.files.storage.FileSystemStorage'
-        ),
-    },
-}
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
