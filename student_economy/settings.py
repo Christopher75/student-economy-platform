@@ -15,6 +15,10 @@ CSRF_TRUSTED_ORIGINS = config(
     default='http://localhost,http://127.0.0.1'
 ).split(',')
 
+CLOUDINARY_CLOUD_NAME = config('CLOUDINARY_CLOUD_NAME', default='')
+CLOUDINARY_API_KEY = config('CLOUDINARY_API_KEY', default='')
+CLOUDINARY_API_SECRET = config('CLOUDINARY_API_SECRET', default='')
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -24,8 +28,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.humanize',
     # Third-party
-    'cloudinary_storage',
-    'cloudinary',
     'crispy_forms',
     'crispy_bootstrap5',
     'widget_tweaks',
@@ -38,6 +40,10 @@ INSTALLED_APPS = [
     'notifications',
     'core',
 ]
+
+# Add Cloudinary only when credentials are configured
+if CLOUDINARY_CLOUD_NAME:
+    INSTALLED_APPS = ['cloudinary_storage', 'cloudinary'] + INSTALLED_APPS
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -112,10 +118,6 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # ── Media files ──────────────────────────────────────────────────────────────
-CLOUDINARY_CLOUD_NAME = config('CLOUDINARY_CLOUD_NAME', default='')
-CLOUDINARY_API_KEY = config('CLOUDINARY_API_KEY', default='')
-CLOUDINARY_API_SECRET = config('CLOUDINARY_API_SECRET', default='')
-
 if CLOUDINARY_CLOUD_NAME:
     # Production: store all uploaded media on Cloudinary (permanent, free tier)
     CLOUDINARY_STORAGE = {
