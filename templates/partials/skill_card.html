@@ -7,7 +7,7 @@
       {% else %}
         <div class="provider-avatar bg-primary d-flex align-items-center justify-content-center text-white fw-bold"
              style="font-size:.7rem;">
-          {{ skill.provider.display_name|first|upper }} }}
+          {{ skill.provider.display_name|first|upper }}
         </div>
       {% endif %}
       <div>
@@ -55,9 +55,13 @@
 
     <!-- Price -->
     <p class="fw-800 text-primary mb-0" style="font-size:1rem;">
-      UGX {{ skill.min_price|floatformat:"0" }}
-      {% if skill.max_price %} – UGX {{ skill.max_price|floatformat:"0" }}{% endif %}
-      <span class="text-muted fw-400" style="font-size:.75rem;">/session</span>
+      {% if skill.price_min %}
+        UGX {{ skill.price_min|floatformat:"0" }}
+        {% if skill.price_max %} – {{ skill.price_max|floatformat:"0" }}{% endif %}
+        <span class="text-muted fw-400" style="font-size:.75rem;">/session</span>
+      {% else %}
+        <span class="text-muted fw-400" style="font-size:.9rem;">Negotiable</span>
+      {% endif %}
     </p>
   </div>
 

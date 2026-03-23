@@ -64,6 +64,10 @@ class SkillOffering(models.Model):
     availability = models.TextField(
         blank=True, help_text="Describe your available days and times"
     )
+    language = models.CharField(
+        max_length=200, blank=True, default="English",
+        help_text='e.g. "English, Luganda, Swahili"'
+    )
     university = models.CharField(max_length=150, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="active")
     views_count = models.IntegerField(default=0)

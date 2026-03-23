@@ -17,6 +17,7 @@ class SkillOfferingForm(forms.ModelForm):
             "price_max",
             "estimated_duration",
             "availability",
+            "language",
             "university",
         ]
         widgets = {
@@ -48,6 +49,9 @@ class SkillOfferingForm(forms.ModelForm):
                     "rows": 3,
                     "placeholder": "e.g. Weekdays 4pm-8pm, Saturdays all day",
                 }
+            ),
+            "language": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": 'e.g. English, Luganda, Swahili'}
             ),
             "university": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "Your university"}

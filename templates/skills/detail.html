@@ -41,12 +41,11 @@
         <h1 class="fw-800 mb-3" style="font-size:1.6rem;">{{ skill.title }}</h1>
 
         <!-- Rating row -->
-        <div class="d-flex align-items-center gap-2 mb-4">
+        <a href="#reviews-section" class="text-decoration-none d-flex align-items-center gap-2 mb-4">
           {% include 'partials/star_rating.html' with rating=skill.average_rating %}
-          <span class="fw-700">{{ skill.average_rating|floatformat:1 }}</span>
-          <span class="text-muted small">({{ skill.reviews_count }} review{{ skill.reviews_count|pluralize }})</span>
-          <span class="text-muted small ms-2"><i class="bi bi-calendar-check me-1"></i>{{ skill.bookings_count }} booking{{ skill.bookings_count|pluralize }}</span>
-        </div>
+          <span class="fw-700 text-dark">{{ skill.average_rating|floatformat:1 }}</span>
+          <span class="text-muted small">({{ skill.total_reviews }} review{{ skill.total_reviews|pluralize }})</span>
+        </a>
 
         <!-- Description -->
         <h5 class="fw-700 mb-2">About This Skill</h5>
@@ -114,7 +113,7 @@
       {% endif %}
 
       <!-- Reviews -->
-      <div class="card border-0 shadow-sm p-4">
+      <div class="card border-0 shadow-sm p-4" id="reviews-section">
         <h5 class="fw-700 mb-3"><i class="bi bi-star me-2 text-warning"></i>Reviews</h5>
         {% if reviews %}
           {% for review in reviews %}
@@ -147,11 +146,15 @@
     <div class="col-lg-4">
 
       <!-- Price card -->
-      <div class="card border-0 shadow-sm p-4 mb-3 sticky-top" style="top:80px;">
+      <div class="card border-0 shadow-sm p-4 mb-3 sticky-top" style="top:80px;z-index:10;">
         <p class="text-muted small fw-600 mb-1">PRICE PER SESSION</p>
         <h2 class="fw-800 text-primary mb-0">
-          UGX {{ skill.min_price|floatformat:"0" }}
-          {% if skill.max_price %}<span class="text-muted fw-400 fs-5"> – UGX {{ skill.max_price|floatformat:"0" }}</span>{% endif %}
+          {% if skill.price_min %}
+            UGX {{ skill.price_min|floatformat:"0" }}
+            {% if skill.price_max %}<span class="text-muted fw-400 fs-5"> – UGX {{ skill.price_max|floatformat:"0" }}</span>{% endif %}
+          {% else %}
+            <span class="fs-4">Negotiable</span>
+          {% endif %}
         </h2>
 
         {% if user.is_authenticated and user != skill.provider %}
@@ -159,7 +162,7 @@
                   data-bs-toggle="modal" data-bs-target="#bookingModal">
             <i class="bi bi-calendar-check me-2"></i>Book a Session
           </button>
-          <a href="{% url 'messaging:conversation' skill.provider.pk %}?skill={{ skill.pk }}"
+          <a href="{% url 'messaging:start' skill.provider.username %}"
              class="btn btn-outline-primary w-100 mt-2 fw-600">
             <i class="bi bi-chat-dots me-2"></i>Message Provider
           </a>
@@ -183,7 +186,7 @@
           {% else %}
             <div class="avatar-lg bg-primary d-flex align-items-center justify-content-center text-white fw-800"
                  style="font-size:1.4rem;">
-              {{ skill.provider.display_name|first|upper }} }}
+              {{ skill.provider.display_name|first|upper }}
             </div>
           {% endif %}
           <div>
@@ -213,31 +216,29 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <form method="post" action="{% url 'skills:booking_request' skill.pk %}" novalidate>
+        <form method="post" action="{% url 'skills:booking_request' skill.pk %}" novalidate
+              onsubmit="this.querySelector('[type=submit]').disabled=true;">
           {% csrf_token %}
           <div class="mb-3">
-            <label class="form-label fw-600">Preferred Date & Time</label>
-            <input type="datetime-local" name="scheduled_at" class="form-control" required>
+            <label class="form-label fw-600">Preferred Date <span class="text-danger">*</span></label>
+            <input type="date" name="requested_date" class="form-control" required
+                   min="{{ today|date:'Y-m-d' }}">
           </div>
           <div class="mb-3">
-            <label class="form-label fw-600">Message to Provider</label>
-            <textarea name="message" class="form-control" rows="3"
+            <label class="form-label fw-600">Notes / Message to Provider</label>
+            <textarea name="notes" class="form-control" rows="3"
                       placeholder="Describe what you need help with..."></textarea>
           </div>
           <div class="mb-3">
-            <label class="form-label fw-600">Preferred Delivery</label>
-            <select name="delivery_preference" class="form-select">
-              {% if skill.delivery_method == 'online' or skill.delivery_method == 'both' %}
-                <option value="online">Online</option>
-              {% endif %}
-              {% if skill.delivery_method == 'in_person' or skill.delivery_method == 'both' %}
-                <option value="in_person">In-Person</option>
-              {% endif %}
-            </select>
-          </div>
-          <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded-3">
-            <span class="fw-600">Session Price</span>
-            <span class="fw-800 text-primary fs-5">UGX {{ skill.min_price|floatformat:"0" }}</span>
+            <label class="form-label fw-600">Agreed Price (UGX) <span class="text-muted fw-400 small">optional</span></label>
+            <div class="input-group">
+              <span class="input-group-text bg-light">UGX</span>
+              <input type="number" name="price_agreed" class="form-control" min="0"
+                     placeholder="{% if skill.price_min %}{{ skill.price_min|floatformat:'0' }}{% else %}Leave blank to negotiate{% endif %}">
+            </div>
+            {% if skill.price_min %}
+              <div class="text-muted small mt-1">Listed price: UGX {{ skill.price_min|floatformat:"0" }}{% if skill.price_max %} – {{ skill.price_max|floatformat:"0" }}{% endif %}</div>
+            {% endif %}
           </div>
           <button type="submit" class="btn btn-primary fw-600 w-100 py-2">
             <i class="bi bi-send me-2"></i>Send Booking Request

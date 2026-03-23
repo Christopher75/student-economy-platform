@@ -105,6 +105,17 @@
               {% if form.estimated_duration.errors %}<div class="invalid-feedback">{{ form.estimated_duration.errors|join:", " }}</div>{% endif %}
             </div>
 
+            <!-- Language -->
+            <div class="col-md-6">
+              <label class="form-label fw-600">Language(s) <span class="text-muted fw-400">(optional)</span></label>
+              <input type="text" name="{{ form.language.html_name }}"
+                     class="form-control{% if form.language.errors %} is-invalid{% endif %}"
+                     value="{{ form.language.value|default:'English' }}"
+                     placeholder="e.g. English, Luganda, Swahili">
+              <div class="form-text">List all languages you can teach in, separated by commas.</div>
+              {% if form.language.errors %}<div class="invalid-feedback">{{ form.language.errors|join:", " }}</div>{% endif %}
+            </div>
+
             <!-- University -->
             <div class="col-md-6">
               <label class="form-label fw-600">University <span class="text-muted fw-400">(optional)</span></label>

@@ -140,23 +140,45 @@
 <script>
   const photosInput = document.getElementById('photosInput');
   const photoPreviews = document.getElementById('photoPreviews');
+  let selectedFiles = [];
+
+  function renderPreviews() {
+    photoPreviews.innerHTML = '';
+    selectedFiles.forEach((file, idx) => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const div = document.createElement('div');
+        div.className = 'position-relative';
+        div.innerHTML = `
+          <img src="${e.target.result}" class="rounded-2 border"
+               style="width:80px;height:80px;object-fit:cover;">
+          <span class="position-absolute top-0 end-0 badge bg-primary rounded-circle"
+                style="font-size:.6rem;">${idx+1}</span>
+          <button type="button" class="btn btn-danger btn-sm position-absolute bottom-0 end-0 p-0"
+                  style="width:20px;height:20px;font-size:.6rem;line-height:1;"
+                  onclick="removePhoto(${idx})" title="Remove">✕</button>`;
+        photoPreviews.appendChild(div);
+      };
+      reader.readAsDataURL(file);
+    });
+    // Rebuild the FileList on the input using DataTransfer
+    const dt = new DataTransfer();
+    selectedFiles.forEach(f => dt.items.add(f));
+    photosInput.files = dt.files;
+  }
+
+  window.removePhoto = function(idx) {
+    selectedFiles.splice(idx, 1);
+    renderPreviews();
+  };
 
   if (photosInput) {
     photosInput.addEventListener('change', function() {
-      photoPreviews.innerHTML = '';
-      Array.from(this.files).slice(0, 5).forEach((file, idx) => {
-        const reader = new FileReader();
-        reader.onload = e => {
-          const div = document.createElement('div');
-          div.className = 'position-relative';
-          div.innerHTML = `
-            <img src="${e.target.result}" class="rounded-2 border"
-                 style="width:80px;height:80px;object-fit:cover;">
-            <span class="position-absolute top-0 end-0 badge bg-primary rounded-circle" style="font-size:.6rem;">${idx+1}</span>`;
-          photoPreviews.appendChild(div);
-        };
-        reader.readAsDataURL(file);
+      const incoming = Array.from(this.files);
+      incoming.forEach(f => {
+        if (selectedFiles.length < 5) selectedFiles.push(f);
       });
+      renderPreviews();
     });
 
     // Drag and drop

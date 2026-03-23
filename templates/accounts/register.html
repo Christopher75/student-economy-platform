@@ -188,7 +188,8 @@
             </label>
           </div>
 
-          <button type="submit" class="btn btn-primary w-100 fw-600 py-2">
+          <button type="submit" class="btn btn-primary w-100 fw-600 py-2"
+                  onclick="this.disabled=true;this.innerHTML='<span class=\'spinner-border spinner-border-sm me-2\'></span>Creating account...';this.form.submit();">
             <i class="bi bi-rocket-takeoff me-2"></i>Create My Account
           </button>
         </form>

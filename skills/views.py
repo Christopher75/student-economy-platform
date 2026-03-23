@@ -75,6 +75,7 @@ class SkillDetailView(DetailView):
         return obj
 
     def get_context_data(self, **kwargs):
+        from django.utils import timezone
         ctx = super().get_context_data(**kwargs)
         skill = self.object
         ctx["portfolio_items"] = skill.portfolio_items.all()
@@ -88,6 +89,7 @@ class SkillDetailView(DetailView):
             and self.request.user != skill.provider
             and skill.status == "active"
         )
+        ctx["today"] = timezone.now().date()
         return ctx
 
 
@@ -365,15 +367,16 @@ def leave_review(request, pk):
 def _notify_provider_new_booking(booking):
     try:
         from notifications.models import Notification
+        from django.urls import reverse
         Notification.objects.create(
-            recipient=booking.provider,
-            actor=booking.client,
-            verb="sent a booking request",
-            target_object_id=booking.pk,
+            user=booking.provider,
+            notification_type="booking_request",
+            title=f"New booking request from {booking.client.display_name}",
             message=(
-                f"{booking.client.display_name} requested a booking for "
+                f'{booking.client.display_name} requested a booking for '
                 f'"{booking.skill.title}".'
             ),
+            action_url=reverse("bookings:booking_detail", kwargs={"pk": booking.pk}),
         )
     except Exception:
         pass
@@ -382,21 +385,37 @@ def _notify_provider_new_booking(booking):
 def _notify_client_booking_update(booking, action):
     try:
         from notifications.models import Notification
-        verb_map = {
-            "accepted": "accepted your booking request",
-            "declined": "declined your booking request",
-            "completed": "marked your booking as completed",
+        from django.urls import reverse
+        type_map = {
+            "accepted": "booking_accepted",
+            "declined": "booking_declined",
+            "completed": "booking_completed",
         }
-        verb = verb_map.get(action, action)
-        Notification.objects.create(
-            recipient=booking.client,
-            actor=booking.provider,
-            verb=verb,
-            target_object_id=booking.pk,
-            message=(
-                f"{booking.provider.display_name} {verb} for "
+        title_map = {
+            "accepted": f"{booking.provider.display_name} accepted your booking",
+            "declined": f"{booking.provider.display_name} declined your booking",
+            "completed": f'"{booking.skill.title}" marked as completed',
+        }
+        msg_map = {
+            "accepted": (
+                f'{booking.provider.display_name} accepted your booking for '
+                f'"{booking.skill.title}". Check the details.'
+            ),
+            "declined": (
+                f'{booking.provider.display_name} declined your booking request for '
                 f'"{booking.skill.title}".'
             ),
+            "completed": (
+                f'Your session for "{booking.skill.title}" has been marked as completed. '
+                f"You can now leave a review."
+            ),
+        }
+        Notification.objects.create(
+            user=booking.client,
+            notification_type=type_map.get(action, "booking_request"),
+            title=title_map.get(action, "Booking update"),
+            message=msg_map.get(action, "Your booking status has been updated."),
+            action_url=reverse("bookings:booking_detail", kwargs={"pk": booking.pk}),
         )
     except Exception:
         pass
