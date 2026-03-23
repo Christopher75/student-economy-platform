@@ -13,4 +13,9 @@ urlpatterns = [
         views.start_conversation_for_listing,
         name="start_for_listing",
     ),
+    path(
+        "start/skill/<int:skill_pk>/",
+        views.start_conversation_for_skill,
+        name="start_for_skill",
+    ),
 ]

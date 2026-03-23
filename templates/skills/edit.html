@@ -15,7 +15,7 @@
       </div>
 
       <div class="card border-0 shadow-sm p-4">
-        <form method="post" enctype="multipart/form-data" novalidate>
+        <form method="post" enctype="multipart/form-data" novalidate id="editSkillForm">
           {% csrf_token %}
 
           <div class="row g-3">
@@ -43,32 +43,36 @@
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label fw-600">Min Price (UGX )</label>
+              <label class="form-label fw-600">Min Price (UGX)</label>
               <div class="input-group">
-                <span class="input-group-text bg-light">UGX </span>
-                <input type="number" name="{{ form.min_price.html_name }}"
-                       class="form-control{% if form.min_price.errors %} is-invalid{% endif %}"
-                       value="{{ form.min_price.value|default:skill.min_price }}" min="0" step="0.01">
+                <span class="input-group-text bg-light">UGX</span>
+                <input type="number" name="{{ form.price_min.html_name }}"
+                       class="form-control{% if form.price_min.errors %} is-invalid{% endif %}"
+                       value="{{ form.price_min.value|default:skill.price_min }}" min="0" step="0.01">
               </div>
+              {% if form.price_min.errors %}<div class="text-danger small mt-1">{{ form.price_min.errors|join:", " }}</div>{% endif %}
             </div>
             <div class="col-md-6">
-              <label class="form-label fw-600">Max Price (UGX )</label>
+              <label class="form-label fw-600">Max Price (UGX)</label>
               <div class="input-group">
-                <span class="input-group-text bg-light">UGX </span>
-                <input type="number" name="{{ form.max_price.html_name }}"
-                       class="form-control"
-                       value="{{ form.max_price.value|default:skill.max_price }}" min="0" step="0.01">
+                <span class="input-group-text bg-light">UGX</span>
+                <input type="number" name="{{ form.price_max.html_name }}"
+                       class="form-control{% if form.price_max.errors %} is-invalid{% endif %}"
+                       value="{{ form.price_max.value|default:skill.price_max }}" min="0" step="0.01">
               </div>
+              {% if form.price_max.errors %}<div class="text-danger small mt-1">{{ form.price_max.errors|join:", " }}</div>{% endif %}
             </div>
             <div class="col-md-6">
-              <label class="form-label fw-600">Duration</label>
-              <input type="text" name="{{ form.duration.html_name }}" class="form-control"
-                     value="{{ form.duration.value|default:skill.duration }}">
+              <label class="form-label fw-600">Estimated Duration</label>
+              <input type="text" name="{{ form.estimated_duration.html_name }}" class="form-control"
+                     value="{{ form.estimated_duration.value|default:skill.estimated_duration }}"
+                     placeholder='e.g. "1 hour", "2-3 hours"'>
             </div>
             <div class="col-md-6">
-              <label class="form-label fw-600">Availability</label>
-              <input type="text" name="{{ form.availability.html_name }}" class="form-control"
-                     value="{{ form.availability.value|default:skill.availability }}">
+              <label class="form-label fw-600">Language(s)</label>
+              <input type="text" name="{{ form.language.html_name }}" class="form-control"
+                     value="{{ form.language.value|default:skill.language }}"
+                     placeholder="e.g. English, Luganda, Swahili">
             </div>
             <div class="col-md-6">
               <label class="form-label fw-600">Status</label>
@@ -78,21 +82,63 @@
                 {% endfor %}
               </select>
             </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Availability</label>
+              <textarea name="{{ form.availability.html_name }}" class="form-control" rows="3"
+                        placeholder="e.g. Weekdays 4pm-8pm, Saturdays all day">{{ form.availability.value|default:skill.availability }}</textarea>
+            </div>
             <div class="col-12">
               <label class="form-label fw-600">Description</label>
               <textarea name="{{ form.description.html_name }}"
                         class="form-control{% if form.description.errors %} is-invalid{% endif %}"
                         rows="5">{{ form.description.value|default:skill.description }}</textarea>
+              {% if form.description.errors %}<div class="invalid-feedback">{{ form.description.errors|join:", " }}</div>{% endif %}
             </div>
+
+            <!-- Existing Portfolio Images -->
+            {% with portfolio_items=skill.portfolio_items.all %}
+            {% if portfolio_items %}
+            <div class="col-12">
+              <label class="form-label fw-600">Current Portfolio Images</label>
+              <div class="d-flex gap-2 flex-wrap">
+                {% for item in portfolio_items %}
+                  <div class="position-relative">
+                    {% if item.image %}
+                      <img src="{{ item.image.url }}" class="rounded-2 border"
+                           style="width:80px;height:80px;object-fit:cover;" alt="{{ item.title }}">
+                    {% else %}
+                      <div class="rounded-2 border bg-light d-flex align-items-center justify-content-center"
+                           style="width:80px;height:80px;">
+                        <i class="bi bi-image text-muted"></i>
+                      </div>
+                    {% endif %}
+                    <form method="post" action="{% url 'skills:delete_portfolio_item' item.pk %}"
+                          style="position:absolute;top:2px;right:2px;"
+                          onsubmit="return confirm('Remove this image?');">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-danger btn-sm p-0 d-flex align-items-center justify-content-center"
+                              style="width:20px;height:20px;border-radius:50%;font-size:.65rem;">
+                        <i class="bi bi-x"></i>
+                      </button>
+                    </form>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            <!-- Add New Portfolio Images -->
             <div class="col-12">
               <label class="form-label fw-600">Add Portfolio Images</label>
-              <input type="file" name="new_portfolio_images" multiple accept="image/*" class="form-control" id="portfolioInput">
+              <input type="file" name="portfolio_images" multiple accept="image/*" class="form-control" id="portfolioInput">
               <div class="d-flex gap-2 flex-wrap mt-2" id="portfolioPreviews"></div>
             </div>
           </div>
 
           <div class="d-flex gap-3 mt-4">
-            <button type="submit" class="btn btn-primary fw-600 px-5 py-2">
+            <button type="submit" class="btn btn-primary fw-600 px-5 py-2" id="saveBtn"
+                    onclick="this.disabled=true;this.innerHTML='<span class=\'spinner-border spinner-border-sm me-2\'></span>Saving...';this.form.submit();">
               <i class="bi bi-check-circle me-2"></i>Save Changes
             </button>
             <a href="{% url 'skills:skill_detail' skill.pk %}" class="btn btn-outline-secondary px-4">Cancel</a>

@@ -228,6 +228,9 @@
     {% else %}
       {% include 'partials/empty_state.html' with icon="bi-lightbulb" title="No skills listed yet" message="Share your expertise with fellow students!" action_url="skills:skill_create" action_text="Offer a Skill" %}
     {% endif %}
+    <div class="text-center mt-4 d-md-none">
+      <a href="{% url 'skills:skill_list' %}" class="btn btn-outline-primary">View All Skills</a>
+    </div>
   </div>
 </section>
 

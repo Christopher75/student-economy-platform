@@ -12,6 +12,9 @@ urlpatterns = [
     path("<int:pk>/edit/", views.skill_edit, name="skill_edit"),
     path("<int:pk>/delete/", views.skill_delete, name="skill_delete"),
 
+    # Portfolio image deletion
+    path("portfolio/<int:pk>/delete/", views.delete_portfolio_item, name="delete_portfolio_item"),
+
     # Booking request (initiated from skill detail page)
     path("<int:skill_pk>/book/", views.booking_request, name="booking_request"),
 ]

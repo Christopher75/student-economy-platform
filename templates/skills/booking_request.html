@@ -90,7 +90,8 @@
           {% endif %}
 
           <div class="d-flex gap-3 mt-4">
-            <button type="submit" class="btn btn-primary fw-600 px-5 py-2">
+            <button type="submit" class="btn btn-primary fw-600 px-5 py-2"
+                    onclick="this.disabled=true;this.innerHTML='<span class=\'spinner-border spinner-border-sm me-2\'></span>Sending...';this.form.submit();">
               <i class="bi bi-send me-2"></i>Send Booking Request
             </button>
             <a href="{% url 'skills:skill_detail' skill.pk %}" class="btn btn-outline-secondary px-4">Cancel</a>

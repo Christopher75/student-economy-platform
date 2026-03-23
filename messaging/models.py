@@ -22,6 +22,13 @@ class Conversation(models.Model):
         blank=True,
         related_name="conversations",
     )
+    skill = models.ForeignKey(
+        "skills.SkillOffering",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="conversations",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     last_message_at = models.DateTimeField(auto_now_add=True)
 
@@ -52,6 +59,8 @@ class Conversation(models.Model):
     def subject(self):
         if self.listing_id:
             return self.listing.title
+        if self.skill_id:
+            return self.skill.title
         if self.booking_id:
             return self.booking.skill.title
         return "Direct Message"

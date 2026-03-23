@@ -159,6 +159,19 @@ def skill_edit(request, pk):
 
 
 @login_required
+def delete_portfolio_item(request, pk):
+    item = get_object_or_404(SkillPortfolioItem, pk=pk)
+    if item.skill.provider != request.user:
+        return HttpResponseForbidden("You are not allowed to delete this portfolio item.")
+    if request.method == "POST":
+        skill_pk = item.skill.pk
+        item.delete()
+        messages.success(request, "Portfolio image removed.")
+        return redirect("skills:skill_edit", pk=skill_pk)
+    return HttpResponseForbidden()
+
+
+@login_required
 def skill_delete(request, pk):
     skill = get_object_or_404(SkillOffering, pk=pk)
     if skill.provider != request.user:
@@ -252,7 +265,14 @@ class BookingDetailView(LoginRequiredMixin, DetailView):
         user = self.request.user
         ctx["is_provider"] = booking.provider == user
         ctx["is_client"] = booking.client == user
-        ctx["has_reviewed"] = Review.objects.filter(booking=booking, reviewer=user).exists()
+        existing_review = Review.objects.filter(booking=booking, reviewer=user).first()
+        ctx["existing_review"] = existing_review
+        ctx["has_reviewed"] = existing_review is not None
+        ctx["can_review"] = (
+            booking.status == "completed"
+            and user in (booking.client, booking.provider)
+            and existing_review is None
+        )
         return ctx
 
 

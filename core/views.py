@@ -9,7 +9,7 @@ def home(request):
 
     context = {
         'featured_listings': Listing.objects.filter(status='available', is_featured=True)[:6],
-        'recent_listings': Listing.objects.filter(status='available').order_by('-created_at')[:8],
+        'recent_listings': Listing.objects.filter(status='available').order_by('-created_at')[:6],
         'hot_listings': Listing.objects.filter(status='available').order_by('-views_count')[:6],
         'featured_skills': SkillOffering.objects.filter(status='active', is_featured=True)[:6],
         'recent_skills': SkillOffering.objects.filter(status='active').order_by('-created_at')[:6],

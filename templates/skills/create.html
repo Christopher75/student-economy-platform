@@ -160,7 +160,8 @@
           {% endif %}
 
           <div class="d-flex gap-3 mt-4">
-            <button type="submit" class="btn btn-primary fw-600 px-5 py-2">
+            <button type="submit" class="btn btn-primary fw-600 px-5 py-2"
+                    onclick="this.disabled=true;this.innerHTML='<span class=\'spinner-border spinner-border-sm me-2\'></span>Saving...';this.form.submit();">
               <i class="bi bi-stars me-2"></i>{% if action == 'Edit' %}Save Changes{% else %}Post Skill{% endif %}
             </button>
             <a href="{% url 'skills:skill_list' %}" class="btn btn-outline-secondary px-4">Cancel</a>

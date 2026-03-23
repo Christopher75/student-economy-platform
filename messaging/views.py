@@ -154,6 +154,34 @@ def start_conversation(request, username):
 
 
 @login_required
+def start_conversation_for_skill(request, skill_pk):
+    """
+    Find or create a conversation about a specific skill offering.
+    The provider is automatically the other participant.
+    """
+    from skills.models import SkillOffering
+
+    skill = get_object_or_404(SkillOffering, pk=skill_pk)
+
+    if skill.provider == request.user:
+        messages.error(request, "You cannot message yourself about your own skill.")
+        return redirect("skills:skill_detail", pk=skill.pk)
+
+    existing = (
+        Conversation.objects.filter(participants=request.user, skill=skill)
+        .filter(participants=skill.provider)
+        .first()
+    )
+
+    if existing:
+        return redirect("messaging:conversation", pk=existing.pk)
+
+    conversation = Conversation.objects.create(skill=skill)
+    conversation.participants.add(request.user, skill.provider)
+    return redirect("messaging:conversation", pk=conversation.pk)
+
+
+@login_required
 def start_conversation_for_listing(request, listing_pk):
     """
     Find or create a conversation about a specific marketplace listing.

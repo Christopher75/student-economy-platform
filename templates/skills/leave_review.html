@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% block title %}Leave a Review – Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8">
+
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="{% url 'bookings:booking_detail' booking.pk %}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-arrow-left"></i>
+        </a>
+        <div>
+          <h2 class="fw-800 mb-0">Leave a Review</h2>
+          <p class="text-muted mb-0 small">Booking #{{ booking.pk }} – {{ booking.skill.title }}</p>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm p-4">
+
+        <!-- Skill info -->
+        <div class="d-flex align-items-center gap-3 p-3 rounded-3 mb-4" style="background:#f0f4ff;border:1px solid #dbeafe;">
+          {% if booking.skill.portfolio_items.first %}
+            <img src="{{ booking.skill.portfolio_items.first.image.url }}"
+                 style="width:50px;height:50px;object-fit:cover;border-radius:8px;" alt="">
+          {% else %}
+            <div style="width:50px;height:50px;background:#2563eb;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+              <i class="bi bi-lightbulb text-white"></i>
+            </div>
+          {% endif %}
+          <div>
+            <div class="fw-700">{{ booking.skill.title }}</div>
+            <div class="text-muted small">Provider: {{ booking.skill.provider.display_name }}</div>
+          </div>
+        </div>
+
+        <form method="post" id="reviewForm">
+          {% csrf_token %}
+
+          <!-- Star rating -->
+          <div class="mb-4">
+            <label class="form-label fw-600">Your Rating <span class="text-danger">*</span></label>
+            <div class="d-flex gap-2 align-items-center star-picker" id="starPicker">
+              {% for i in "12345" %}
+                {% with forloop.counter as n %}
+                <label class="star-label" style="cursor:pointer;font-size:2rem;color:#d1d5db;" data-value="{{ n }}">
+                  <input type="radio" name="rating" value="{{ n }}" class="d-none"
+                         {% if form.rating.value == n|stringformat:"s" %}checked{% endif %}>
+                  <i class="bi bi-star-fill"></i>
+                </label>
+                {% endwith %}
+              {% endfor %}
+            </div>
+            {% if form.rating.errors %}
+              <div class="text-danger small mt-1">{{ form.rating.errors|join:", " }}</div>
+            {% endif %}
+          </div>
+
+          <!-- Comment -->
+          <div class="mb-4">
+            <label class="form-label fw-600">Your Review <span class="text-danger">*</span></label>
+            <textarea name="comment"
+                      class="form-control{% if form.comment.errors %} is-invalid{% endif %}"
+                      rows="4"
+                      placeholder="Share your experience with this provider...">{{ form.comment.value|default:"" }}</textarea>
+            {% if form.comment.errors %}
+              <div class="invalid-feedback">{{ form.comment.errors|join:", " }}</div>
+            {% endif %}
+          </div>
+
+          <div class="d-flex gap-3">
+            <button type="submit" class="btn btn-warning fw-600 px-5" id="submitBtn"
+                    onclick="this.disabled=true;this.innerHTML='<span class=\'spinner-border spinner-border-sm me-2\'></span>Submitting...';this.form.submit();">
+              <i class="bi bi-send me-2"></i>Submit Review
+            </button>
+            <a href="{% url 'bookings:booking_detail' booking.pk %}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Interactive star picker
+  const labels = document.querySelectorAll('.star-label');
+  const activeColor = '#f59e0b';
+  const inactiveColor = '#d1d5db';
+
+  function highlightStars(upTo) {
+    labels.forEach((lbl, idx) => {
+      lbl.style.color = idx < upTo ? activeColor : inactiveColor;
+    });
+  }
+
+  // Restore checked state on load
+  labels.forEach((lbl, idx) => {
+    const input = lbl.querySelector('input');
+    if (input.checked) highlightStars(idx + 1);
+
+    lbl.addEventListener('mouseover', () => highlightStars(idx + 1));
+    lbl.addEventListener('click', () => {
+      input.checked = true;
+      highlightStars(idx + 1);
+    });
+  });
+
+  document.getElementById('starPicker').addEventListener('mouseleave', () => {
+    const checked = document.querySelector('.star-label input:checked');
+    const val = checked ? parseInt(checked.value) : 0;
+    highlightStars(val);
+  });
+</script>
+{% endblock %}

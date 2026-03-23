@@ -66,7 +66,8 @@
             </div>
           {% endif %}
 
-          <button type="submit" class="btn btn-primary w-100 fw-600 py-2">
+          <button type="submit" class="btn btn-primary w-100 fw-600 py-2" id="loginBtn"
+                  onclick="this.disabled=true;this.innerHTML='<span class=\'spinner-border spinner-border-sm me-2\'></span>Signing in...';this.form.submit();">
             <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
           </button>
         </form>
