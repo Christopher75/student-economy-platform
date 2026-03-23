@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.views import PasswordResetView as BasePasswordResetView
 from django.contrib import messages
 from django.views import View
 from django.views.generic import TemplateView
@@ -384,3 +385,24 @@ class PasswordChangeView(View):
 
         messages.error(request, 'Please correct the errors below.')
         return render(request, self.template_name, {'form': form})
+
+
+# ---------------------------------------------------------------------------
+# Password Reset (custom — catches SMTP errors so they don't cause 500)
+# ---------------------------------------------------------------------------
+
+class SafePasswordResetView(BasePasswordResetView):
+    """Wraps Django's PasswordResetView to handle email-sending failures gracefully."""
+    template_name = 'accounts/password_reset_form.html'
+    email_template_name = 'accounts/emails/password_reset_email.txt'
+    html_email_template_name = 'accounts/emails/password_reset_email.html'
+    subject_template_name = 'accounts/emails/password_reset_subject.txt'
+    success_url = '/accounts/password-reset/sent/'
+
+    def form_valid(self, form):
+        try:
+            return super().form_valid(form)
+        except Exception:
+            # SMTP misconfiguration or connection error — still redirect to
+            # "sent" page so users don't see a 500 error.
+            return redirect(self.success_url)

@@ -3,6 +3,7 @@ from django.contrib.auth import views as auth_views
 from django.conf import settings
 
 from . import views
+from .views import SafePasswordResetView
 from .forms import StudentPasswordChangeForm
 
 app_name = 'accounts'
@@ -12,14 +13,7 @@ app_name = 'accounts'
 password_reset_patterns = [
     path(
         'password-reset/',
-        auth_views.PasswordResetView.as_view(
-            template_name='accounts/password_reset_form.html',
-            email_template_name='accounts/emails/password_reset_email.txt',
-            html_email_template_name='accounts/emails/password_reset_email.html',
-            subject_template_name='accounts/emails/password_reset_subject.txt',
-            success_url='/accounts/password-reset/sent/',
-            extra_email_context={'site_name': 'Student Economy Platform'},
-        ),
+        SafePasswordResetView.as_view(),
         name='password_reset',
     ),
     path(
