@@ -63,19 +63,27 @@
                   </h6>
                   <div class="d-flex align-items-center gap-2 text-muted small">
                     <span><i class="bi bi-person me-1"></i>Provider: {{ booking.skill.provider.full_name }}</span>
-                    {% if booking.scheduled_at %}
-                      <span><i class="bi bi-calendar3 me-1"></i>{{ booking.scheduled_at|date:"M d, Y  H:i" }}</span>
+                    {% if booking.requested_date %}
+                      <span><i class="bi bi-calendar3 me-1"></i>{{ booking.requested_date|date:"M d, Y" }}</span>
                     {% endif %}
                   </div>
                 </div>
                 <!-- Price + actions -->
                 <div class="text-end">
-                  <p class="fw-800 text-primary mb-2" style="font-size:1.1rem;">UGX {{ booking.agreed_price|floatformat:"0" }}</p>
-                  <div class="d-flex gap-2 justify-content-end">
+                  {% if booking.price_agreed %}
+                    <p class="fw-800 text-primary mb-2" style="font-size:1.1rem;">UGX {{ booking.price_agreed|floatformat:"0" }}</p>
+                  {% else %}
+                    <p class="text-muted small mb-2">Price TBD</p>
+                  {% endif %}
+                  <div class="d-flex gap-2 justify-content-end flex-wrap">
                     <a href="{% url 'bookings:booking_detail' booking.pk %}" class="btn btn-outline-primary btn-sm fw-600">View</a>
                     {% if booking.status == 'pending' %}
-                      <a href="{% url 'bookings:decline_booking' booking.pk %}" class="btn btn-outline-danger btn-sm fw-600">Cancel</a>
-                    {% elif booking.status == 'completed' and not booking.has_client_review %}
+                      <form method="post" action="{% url 'bookings:decline_booking' booking.pk %}"
+                            onsubmit="return confirm('Cancel this booking request?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-danger btn-sm fw-600">Cancel</button>
+                      </form>
+                    {% elif booking.status == 'completed' and not booking.user_has_reviewed %}
                       <a href="{% url 'bookings:leave_review' booking.pk %}" class="btn btn-warning btn-sm fw-600">
                         <i class="bi bi-star me-1"></i>Review
                       </a>
@@ -120,20 +128,45 @@
                   </h6>
                   <div class="d-flex align-items-center gap-2 text-muted small">
                     <span><i class="bi bi-person me-1"></i>Client: {{ booking.client.full_name }}</span>
-                    {% if booking.scheduled_at %}
-                      <span><i class="bi bi-calendar3 me-1"></i>{{ booking.scheduled_at|date:"M d, Y  H:i" }}</span>
+                    {% if booking.requested_date %}
+                      <span><i class="bi bi-calendar3 me-1"></i>{{ booking.requested_date|date:"M d, Y" }}</span>
                     {% endif %}
                   </div>
                 </div>
                 <div class="text-end">
-                  <p class="fw-800 text-primary mb-2" style="font-size:1.1rem;">UGX {{ booking.agreed_price|floatformat:"0" }}</p>
-                  <div class="d-flex gap-2 justify-content-end">
+                  {% if booking.price_agreed %}
+                    <p class="fw-800 text-primary mb-2" style="font-size:1.1rem;">UGX {{ booking.price_agreed|floatformat:"0" }}</p>
+                  {% else %}
+                    <p class="text-muted small mb-2">Price TBD</p>
+                  {% endif %}
+                  <div class="d-flex gap-2 justify-content-end flex-wrap">
                     <a href="{% url 'bookings:booking_detail' booking.pk %}" class="btn btn-outline-primary btn-sm fw-600">View</a>
                     {% if booking.status == 'pending' %}
-                      <a href="{% url 'bookings:accept_booking' booking.pk %}" class="btn btn-success btn-sm fw-600">Accept</a>
-                      <a href="{% url 'bookings:decline_booking' booking.pk %}" class="btn btn-outline-danger btn-sm fw-600">Decline</a>
+                      <form method="post" action="{% url 'bookings:accept_booking' booking.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-success btn-sm fw-600"
+                                onclick="this.disabled=true;this.innerHTML='<span class=\'spinner-border spinner-border-sm\'></span>';this.form.submit();">
+                          Accept
+                        </button>
+                      </form>
+                      <form method="post" action="{% url 'bookings:decline_booking' booking.pk %}"
+                            onsubmit="return confirm('Decline this booking?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-danger btn-sm fw-600">Decline</button>
+                      </form>
                     {% elif booking.status == 'confirmed' %}
-                      <a href="{% url 'bookings:complete_booking' booking.pk %}" class="btn btn-primary btn-sm fw-600">Mark Done</a>
+                      <form method="post" action="{% url 'bookings:complete_booking' booking.pk %}"
+                            onsubmit="return confirm('Mark this session as completed?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary btn-sm fw-600"
+                                onclick="this.disabled=true;this.innerHTML='<span class=\'spinner-border spinner-border-sm\'></span>';this.form.submit();">
+                          Mark Done
+                        </button>
+                      </form>
+                    {% elif booking.status == 'completed' and not booking.user_has_reviewed %}
+                      <a href="{% url 'bookings:leave_review' booking.pk %}" class="btn btn-warning btn-sm fw-600">
+                        <i class="bi bi-star me-1"></i>Review
+                      </a>
                     {% endif %}
                   </div>
                 </div>

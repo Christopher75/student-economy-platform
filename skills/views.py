@@ -237,12 +237,18 @@ class MyBookingsView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         user = self.request.user
-        ctx["client_bookings"] = SkillBooking.objects.filter(client=user).select_related(
-            "skill", "provider"
-        ).order_by("-created_at")
-        ctx["provider_bookings"] = SkillBooking.objects.filter(provider=user).select_related(
-            "skill", "client"
-        ).order_by("-created_at")
+        client_qs = list(SkillBooking.objects.filter(client=user).select_related("skill", "provider").order_by("-created_at"))
+        provider_qs = list(SkillBooking.objects.filter(provider=user).select_related("skill", "client").order_by("-created_at"))
+        # Annotate each booking with whether the current user has already reviewed it
+        reviewed_ids = set(Review.objects.filter(reviewer=user).values_list("booking_id", flat=True))
+        for b in client_qs:
+            b.user_has_reviewed = b.pk in reviewed_ids
+        for b in provider_qs:
+            b.user_has_reviewed = b.pk in reviewed_ids
+        ctx["client_bookings"] = client_qs
+        ctx["provider_bookings"] = provider_qs
+        ctx["client_pending_count"] = sum(1 for b in client_qs if b.status == "pending")
+        ctx["provider_pending_count"] = sum(1 for b in provider_qs if b.status == "pending")
         return ctx
 
 
@@ -299,16 +305,32 @@ def decline_booking(request, pk):
     if request.method != "POST":
         return HttpResponseForbidden()
     booking = get_object_or_404(SkillBooking, pk=pk)
-    if booking.provider != request.user:
-        return HttpResponseForbidden("Only the provider can decline bookings.")
-    if booking.status not in ("pending", "confirmed"):
+
+    # Provider can decline/cancel any pending or confirmed booking
+    # Client can cancel their own pending booking request
+    is_provider = booking.provider == request.user
+    is_client = booking.client == request.user
+
+    if not is_provider and not is_client:
+        return HttpResponseForbidden("You are not a participant in this booking.")
+
+    if is_client and booking.status != "pending":
+        messages.error(request, "You can only cancel a pending booking request.")
+        return redirect("bookings:booking_detail", pk=pk)
+
+    if is_provider and booking.status not in ("pending", "confirmed"):
         messages.error(request, "This booking cannot be declined in its current state.")
         return redirect("bookings:booking_detail", pk=pk)
 
     booking.status = "cancelled"
     booking.save()
-    _notify_client_booking_update(booking, "declined")
-    messages.success(request, "Booking declined. The client has been notified.")
+
+    if is_client:
+        messages.success(request, "Your booking request has been cancelled.")
+    else:
+        _notify_client_booking_update(booking, "declined")
+        messages.success(request, "Booking declined. The client has been notified.")
+
     return redirect("bookings:my_bookings")
 
 
