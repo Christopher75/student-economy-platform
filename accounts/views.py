@@ -228,25 +228,24 @@ class ProfileView(View):
     def get(self, request, username):
         profile_user = get_object_or_404(User, username=username)
 
-        # Gather related data — guarded with try/except so missing apps don't break profile
-        listings = []
-        skills = []
-        reviews = []
+        user_listings = []
+        user_skills = []
+        user_reviews = []
 
         try:
             from marketplace.models import Listing
-            listings = Listing.objects.filter(
-                seller=profile_user, status='active'
+            user_listings = Listing.objects.filter(
+                seller=profile_user, status='available'
             ).order_by('-created_at')[:6]
         except Exception:
             pass
 
         try:
-            from skills.models import SkillListing, Review
-            skills = SkillListing.objects.filter(
-                provider=profile_user, is_active=True
+            from skills.models import SkillOffering, Review
+            user_skills = SkillOffering.objects.filter(
+                provider=profile_user, status='active'
             ).order_by('-created_at')[:6]
-            reviews = Review.objects.filter(
+            user_reviews = Review.objects.filter(
                 reviewee=profile_user
             ).select_related('reviewer').order_by('-created_at')[:10]
         except Exception:
@@ -254,12 +253,13 @@ class ProfileView(View):
 
         context = {
             'profile_user': profile_user,
-            'listings': listings,
-            'skills': skills,
-            'reviews': reviews,
+            'user_listings': user_listings,
+            'user_skills': user_skills,
+            'user_reviews': user_reviews,
+            'listings_count': len(user_listings),
+            'skills_count': len(user_skills),
+            'reviews_count': len(user_reviews),
             'average_rating': profile_user.get_average_rating(),
-            'review_count': profile_user.get_review_count(),
-            'trust_score': profile_user.get_trust_score(),
             'is_own_profile': request.user == profile_user,
         }
         return render(request, self.template_name, context)
@@ -298,55 +298,32 @@ class DashboardView(View):
 
     def get(self, request):
         user = request.user
-        stats = {}
+
+        active_listings_count = 0
+        sold_count = 0
+        active_skills_count = 0
+        incoming_pending = 0  # requests sent TO me as provider
+        outgoing_pending = 0  # requests I sent as client
+        completed_bookings_count = 0
 
         try:
             from marketplace.models import Listing
-            stats['active_listings'] = Listing.objects.filter(
-                seller=user, status='active'
-            ).count()
-            stats['sold_listings'] = Listing.objects.filter(
-                seller=user, status='sold'
-            ).count()
+            active_listings_count = Listing.objects.filter(seller=user, status='available').count()
+            sold_count = Listing.objects.filter(seller=user, status='sold').count()
         except Exception:
-            stats['active_listings'] = 0
-            stats['sold_listings'] = 0
+            pass
 
         try:
-            from skills.models import SkillListing, SkillBooking
-            stats['active_skills'] = SkillListing.objects.filter(
-                provider=user, is_active=True
-            ).count()
-            stats['pending_bookings'] = SkillBooking.objects.filter(
-                Q(provider=user) | Q(client=user),
-                status='pending',
-            ).count()
-            stats['completed_bookings'] = SkillBooking.objects.filter(
-                Q(provider=user) | Q(client=user),
-                status='completed',
+            from skills.models import SkillOffering, SkillBooking
+            active_skills_count = SkillOffering.objects.filter(provider=user, status='active').count()
+            incoming_pending = SkillBooking.objects.filter(provider=user, status='pending').count()
+            outgoing_pending = SkillBooking.objects.filter(client=user, status='pending').count()
+            completed_bookings_count = SkillBooking.objects.filter(
+                Q(provider=user) | Q(client=user), status='completed'
             ).count()
         except Exception:
-            stats['active_skills'] = 0
-            stats['pending_bookings'] = 0
-            stats['completed_bookings'] = 0
+            pass
 
-        try:
-            from messaging.models import Message
-            stats['unread_messages'] = Message.objects.filter(
-                recipient=user, is_read=False
-            ).count()
-        except Exception:
-            stats['unread_messages'] = 0
-
-        try:
-            from notifications.models import Notification
-            stats['unread_notifications'] = Notification.objects.filter(
-                recipient=user, is_read=False
-            ).count()
-        except Exception:
-            stats['unread_notifications'] = 0
-
-        # Recent listings
         recent_listings = []
         try:
             from marketplace.models import Listing
@@ -354,23 +331,30 @@ class DashboardView(View):
         except Exception:
             pass
 
-        # Recent bookings
         recent_bookings = []
+        incoming_pending_bookings = []
         try:
             from skills.models import SkillBooking
             recent_bookings = SkillBooking.objects.filter(
                 Q(provider=user) | Q(client=user)
             ).select_related('skill', 'client', 'provider').order_by('-created_at')[:5]
+            incoming_pending_bookings = SkillBooking.objects.filter(
+                provider=user, status='pending'
+            ).select_related('skill', 'client').order_by('-created_at')[:5]
         except Exception:
             pass
 
         context = {
-            'stats': stats,
+            'active_listings_count': active_listings_count,
+            'sold_count': sold_count,
+            'active_skills_count': active_skills_count,
+            'pending_bookings_count': incoming_pending + outgoing_pending,
+            'incoming_pending_count': incoming_pending,
+            'outgoing_pending_count': outgoing_pending,
+            'completed_bookings_count': completed_bookings_count,
             'recent_listings': recent_listings,
             'recent_bookings': recent_bookings,
-            'average_rating': user.get_average_rating(),
-            'review_count': user.get_review_count(),
-            'trust_score': user.get_trust_score(),
+            'incoming_pending_bookings': incoming_pending_bookings,
         }
         return render(request, self.template_name, context)
 

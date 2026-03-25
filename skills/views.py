@@ -153,7 +153,7 @@ def skill_edit(request, pk):
 
     return render(
         request,
-        "skills/create.html",
+        "skills/edit.html",
         {"form": form, "skill": skill, "action": "Edit"},
     )
 

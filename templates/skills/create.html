@@ -150,7 +150,7 @@
             <div class="col-12">
               <label class="form-label fw-600">Portfolio Images <span class="text-muted fw-400">(optional, up to 5)</span></label>
               <input type="file" name="portfolio_images" multiple accept="image/*" class="form-control" id="portfolioInput">
-              <div class="form-text">Showcase your work to attract more bookings.</div>
+              <div class="form-text">Showcase your work to attract more bookings. Click × to remove a selected image.</div>
               <div class="d-flex gap-2 flex-wrap mt-2" id="portfolioPreviews"></div>
             </div>
           </div>
@@ -177,21 +177,44 @@
 {% block extra_js %}
 <script>
   const portfolioInput = document.getElementById('portfolioInput');
+  const portfolioPreviews = document.getElementById('portfolioPreviews');
+  let selectedFiles = [];
+
   if (portfolioInput) {
     portfolioInput.addEventListener('change', function() {
-      const container = document.getElementById('portfolioPreviews');
-      container.innerHTML = '';
-      Array.from(this.files).slice(0, 5).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = e => {
-          const img = document.createElement('img');
-          img.src = e.target.result;
-          img.className = 'rounded-2 border';
-          img.style.cssText = 'width:70px;height:70px;object-fit:cover;';
-          container.appendChild(img);
-        };
-        reader.readAsDataURL(file);
-      });
+      const newFiles = Array.from(this.files).slice(0, 5 - selectedFiles.length);
+      selectedFiles = [...selectedFiles, ...newFiles].slice(0, 5);
+      renderPreviews();
+    });
+  }
+
+  function renderPreviews() {
+    portfolioPreviews.innerHTML = '';
+    // Sync back to the input using DataTransfer
+    const dt = new DataTransfer();
+    selectedFiles.forEach(f => dt.items.add(f));
+    portfolioInput.files = dt.files;
+
+    selectedFiles.forEach((file, idx) => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const wrap = document.createElement('div');
+        wrap.className = 'position-relative';
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        img.className = 'rounded-2 border';
+        img.style.cssText = 'width:70px;height:70px;object-fit:cover;';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-danger btn-sm p-0 d-flex align-items-center justify-content-center position-absolute';
+        btn.style.cssText = 'top:2px;right:2px;width:18px;height:18px;border-radius:50%;font-size:.6rem;';
+        btn.innerHTML = '<i class="bi bi-x"></i>';
+        btn.onclick = () => { selectedFiles.splice(idx, 1); renderPreviews(); };
+        wrap.appendChild(img);
+        wrap.appendChild(btn);
+        portfolioPreviews.appendChild(wrap);
+      };
+      reader.readAsDataURL(file);
     });
   }
 </script>
