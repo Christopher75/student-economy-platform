@@ -14,6 +14,14 @@
         </div>
       </div>
 
+      <!-- Portfolio-delete forms live OUTSIDE the main form (nested forms are invalid HTML) -->
+      {% for item in skill.portfolio_items.all %}
+        <form id="deletePortfolio{{ item.pk }}" method="post"
+              action="{% url 'skills:delete_portfolio_item' item.pk %}">
+          {% csrf_token %}
+        </form>
+      {% endfor %}
+
       <div class="card border-0 shadow-sm p-4">
         <form method="post" enctype="multipart/form-data" novalidate>
           {% csrf_token %}
@@ -119,17 +127,14 @@
                       <i class="bi bi-image text-muted fs-4"></i>
                     </div>
                   {% endif %}
-                  <form method="post" action="{% url 'skills:delete_portfolio_item' item.pk %}"
-                        style="position:absolute;top:4px;right:4px;"
-                        onsubmit="return confirm('Remove this image?');">
-                    {% csrf_token %}
-                    <button type="submit"
-                            class="btn btn-danger btn-sm p-0 d-flex align-items-center justify-content-center"
-                            style="width:22px;height:22px;border-radius:50%;font-size:.65rem;"
-                            title="Remove">
-                      <i class="bi bi-x"></i>
-                    </button>
-                  </form>
+                  <!-- form="deletePortfolio{{pk}}" ties button to the external delete form above -->
+                  <button type="submit" form="deletePortfolio{{ item.pk }}"
+                          onclick="return confirm('Remove this image?');"
+                          class="btn btn-danger btn-sm p-0 d-flex align-items-center justify-content-center"
+                          style="position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;font-size:.65rem;"
+                          title="Remove">
+                    <i class="bi bi-x"></i>
+                  </button>
                 </div>
               {% endfor %}
             </div>

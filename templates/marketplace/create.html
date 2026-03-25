@@ -16,6 +16,23 @@
         </div>
       </div>
 
+      <!-- Photo-delete forms live OUTSIDE the main form (nested forms are invalid HTML) -->
+      {% if listing %}
+        {% for photo in listing.photos.all %}
+          <form id="deletePhoto{{ photo.pk }}" method="post"
+                action="{% url 'marketplace:delete_listing_photo' photo.pk %}">
+            {% csrf_token %}
+          </form>
+        {% endfor %}
+      {% endif %}
+
+      <!-- Mark-as-sold form also lives OUTSIDE the main form -->
+      {% if listing and listing.status == 'available' %}
+        <form id="markSoldForm" method="post" action="{% url 'marketplace:mark_sold' listing.pk %}">
+          {% csrf_token %}
+        </form>
+      {% endif %}
+
       <div class="card border-0 shadow-sm p-4">
         <form method="post" enctype="multipart/form-data" novalidate id="listingForm">
           {% csrf_token %}
@@ -34,15 +51,14 @@
                     {% if photo.is_primary %}
                       <span class="position-absolute top-0 start-0 badge bg-primary" style="font-size:.55rem;">Main</span>
                     {% endif %}
-                    <form method="post" action="{% url 'marketplace:delete_listing_photo' photo.pk %}"
-                          style="position:absolute;top:4px;right:4px;"
-                          onsubmit="return confirm('Remove this photo?');">
-                      {% csrf_token %}
-                      <button type="submit" class="btn btn-danger btn-sm p-0 d-flex align-items-center justify-content-center"
-                              style="width:22px;height:22px;border-radius:50%;font-size:.65rem;" title="Remove">
-                        <i class="bi bi-x"></i>
-                      </button>
-                    </form>
+                    <!-- form="deletePhoto{{pk}}" ties this button to the external delete form above -->
+                    <button type="submit" form="deletePhoto{{ photo.pk }}"
+                            onclick="return confirm('Remove this photo?');"
+                            class="btn btn-danger btn-sm p-0 d-flex align-items-center justify-content-center"
+                            style="position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;font-size:.65rem;"
+                            title="Remove">
+                      <i class="bi bi-x"></i>
+                    </button>
                   </div>
                 {% endfor %}
               </div>
@@ -171,13 +187,12 @@
                 <p class="fw-700 mb-0"><i class="bi bi-check-circle-fill text-warning me-2"></i>Mark as Sold</p>
                 <p class="text-muted small mb-0">This will remove the listing from the public marketplace and notify anyone who saved it.</p>
               </div>
-              <form method="post" action="{% url 'marketplace:mark_sold' listing.pk %}"
-                    onsubmit="return confirm('Mark this listing as sold? It will be removed from the marketplace.');">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-warning fw-600 px-4">
-                  <i class="bi bi-tag-fill me-2"></i>Mark as Sold
-                </button>
-              </form>
+              <!-- Uses the external markSoldForm defined above the main form -->
+              <button type="submit" form="markSoldForm"
+                      onclick="return confirm('Mark this listing as sold? It will be removed from the marketplace.');"
+                      class="btn btn-warning fw-600 px-4">
+                <i class="bi bi-tag-fill me-2"></i>Mark as Sold
+              </button>
             </div>
           </div>
           {% elif listing and listing.status == 'sold' %}
