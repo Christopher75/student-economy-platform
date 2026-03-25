@@ -172,6 +172,39 @@ def delete_portfolio_item(request, pk):
 
 
 @login_required
+def my_skills(request):
+    """Show all skills offered by the current user, regardless of status."""
+    skills = SkillOffering.objects.filter(provider=request.user).order_by("-created_at")
+    return render(request, "skills/my_skills.html", {"skills": skills})
+
+
+@login_required
+def skill_activate(request, pk):
+    if request.method != "POST":
+        return HttpResponseForbidden()
+    skill = get_object_or_404(SkillOffering, pk=pk)
+    if skill.provider != request.user:
+        return HttpResponseForbidden()
+    skill.status = "active"
+    skill.save(update_fields=["status"])
+    messages.success(request, f'"{skill.title}" is now active and visible to students.')
+    return redirect("skills:my_skills")
+
+
+@login_required
+def skill_pause(request, pk):
+    if request.method != "POST":
+        return HttpResponseForbidden()
+    skill = get_object_or_404(SkillOffering, pk=pk)
+    if skill.provider != request.user:
+        return HttpResponseForbidden()
+    skill.status = "paused"
+    skill.save(update_fields=["status"])
+    messages.success(request, f'"{skill.title}" has been paused and is no longer visible publicly.')
+    return redirect("skills:my_skills")
+
+
+@login_required
 def skill_delete(request, pk):
     skill = get_object_or_404(SkillOffering, pk=pk)
     if skill.provider != request.user:

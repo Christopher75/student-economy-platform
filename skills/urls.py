@@ -7,10 +7,13 @@ app_name = "skills"
 urlpatterns = [
     # Skill offerings
     path("", views.SkillListView.as_view(), name="skill_list"),
+    path("mine/", views.my_skills, name="my_skills"),
     path("create/", views.skill_create, name="skill_create"),
     path("<int:pk>/", views.SkillDetailView.as_view(), name="skill_detail"),
     path("<int:pk>/edit/", views.skill_edit, name="skill_edit"),
     path("<int:pk>/delete/", views.skill_delete, name="skill_delete"),
+    path("<int:pk>/activate/", views.skill_activate, name="skill_activate"),
+    path("<int:pk>/pause/", views.skill_pause, name="skill_pause"),
 
     # Portfolio image deletion
     path("portfolio/<int:pk>/delete/", views.delete_portfolio_item, name="delete_portfolio_item"),

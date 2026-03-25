@@ -138,8 +138,18 @@
               {% if form.description.errors %}<div class="invalid-feedback">{{ form.description.errors|join:", " }}</div>{% endif %}
             </div>
 
+            <!-- University -->
+            <div class="col-md-6">
+              <label class="form-label fw-600">University <span class="text-muted fw-400">(optional)</span></label>
+              <input type="text" name="{{ form.university.html_name }}"
+                     class="form-control{% if form.university.errors %} is-invalid{% endif %}"
+                     value="{{ form.university.value|default:'' }}"
+                     placeholder="Your university">
+              {% if form.university.errors %}<div class="invalid-feedback">{{ form.university.errors|join:", " }}</div>{% endif %}
+            </div>
+
             <!-- Campus Location -->
-            <div class="col-12">
+            <div class="col-md-6">
               <label class="form-label fw-600">Pickup Location <span class="text-muted fw-400">(optional)</span></label>
               <input type="text" name="{{ form.campus_location.html_name }}"
                      class="form-control{% if form.campus_location.errors %} is-invalid{% endif %}"

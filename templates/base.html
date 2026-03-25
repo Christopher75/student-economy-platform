@@ -241,6 +241,7 @@
               <li><a class="dropdown-item" href="{% url 'accounts:dashboard' %}"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
               <li><a class="dropdown-item" href="{% url 'bookings:my_bookings' %}"><i class="bi bi-calendar-check me-2"></i>My Bookings</a></li>
               <li><a class="dropdown-item" href="{% url 'marketplace:listing_create' %}"><i class="bi bi-plus-circle me-2"></i>Post Listing</a></li>
+              <li><a class="dropdown-item" href="{% url 'skills:my_skills' %}"><i class="bi bi-mortarboard me-2"></i>My Skills</a></li>
               <li><a class="dropdown-item" href="{% url 'skills:skill_create' %}"><i class="bi bi-star me-2"></i>Offer Skill</a></li>
               <li><hr class="dropdown-divider"></li>
               <li>
@@ -263,6 +264,9 @@
           </li>
           <li class="nav-item d-lg-none">
             <a class="nav-link" href="{% url 'marketplace:listing_create' %}"><i class="bi bi-plus-circle me-2"></i>Post Listing</a>
+          </li>
+          <li class="nav-item d-lg-none">
+            <a class="nav-link" href="{% url 'skills:my_skills' %}"><i class="bi bi-mortarboard me-2"></i>My Skills</a>
           </li>
           <li class="nav-item d-lg-none">
             <a class="nav-link" href="{% url 'skills:skill_create' %}"><i class="bi bi-star me-2"></i>Offer Skill</a>
@@ -326,6 +330,7 @@
         <ul class="list-unstyled small">
           <li class="mb-1"><a href="{% url 'skills:skill_list' %}">Find Skills</a></li>
           <li class="mb-1"><a href="{% url 'skills:skill_create' %}">Offer a Skill</a></li>
+          <li class="mb-1"><a href="{% url 'skills:my_skills' %}">My Skills</a></li>
           <li class="mb-1"><a href="{% url 'bookings:my_bookings' %}">My Bookings</a></li>
         </ul>
       </div>
