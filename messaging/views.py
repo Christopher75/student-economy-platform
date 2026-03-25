@@ -59,10 +59,20 @@ class ConversationView(LoginRequiredMixin, DetailView):
         conversation = self.get_object()
         # Mark all unread messages (not sent by current user) as read
         now = timezone.now()
-        unread_qs = conversation.messages.filter(
+        conversation.messages.filter(
             read_at__isnull=True
-        ).exclude(sender=request.user)
-        unread_qs.update(read_at=now)
+        ).exclude(sender=request.user).update(read_at=now)
+
+        # Also mark any message notifications pointing to this conversation as read
+        try:
+            from notifications.models import Notification
+            from django.urls import reverse
+            action_url = reverse("messaging:conversation", kwargs={"pk": conversation.pk})
+            Notification.objects.filter(
+                user=request.user, action_url=action_url, is_read=False
+            ).update(is_read=True)
+        except Exception:
+            pass
 
         form = MessageForm()
         return render(request, self.template_name, {

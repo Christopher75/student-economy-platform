@@ -265,6 +265,20 @@ class BookingDetailView(LoginRequiredMixin, DetailView):
             raise PermissionDenied
         return obj
 
+    def get(self, request, *args, **kwargs):
+        response = super().get(request, *args, **kwargs)
+        # Auto-mark booking notifications as read when the user opens the booking
+        try:
+            from notifications.models import Notification
+            from django.urls import reverse
+            action_url = reverse("bookings:booking_detail", kwargs={"pk": self.object.pk})
+            Notification.objects.filter(
+                user=request.user, action_url=action_url, is_read=False
+            ).update(is_read=True)
+        except Exception:
+            pass
+        return response
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         booking = self.object

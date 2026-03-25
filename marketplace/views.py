@@ -150,6 +150,20 @@ def listing_edit(request, pk):
 
 
 @login_required
+def delete_listing_photo(request, pk):
+    """Remove a single photo from a listing."""
+    photo = get_object_or_404(ListingPhoto, pk=pk)
+    if photo.listing.seller != request.user:
+        return HttpResponseForbidden("You cannot delete this photo.")
+    if request.method != "POST":
+        return HttpResponseForbidden()
+    listing_pk = photo.listing.pk
+    photo.delete()
+    messages.success(request, "Photo removed.")
+    return redirect("marketplace:listing_edit", pk=listing_pk)
+
+
+@login_required
 def listing_delete(request, pk):
     listing = get_object_or_404(Listing, pk=pk)
     if listing.seller != request.user:
@@ -279,13 +293,14 @@ def _notify_saved_users_sold(listing):
     """Notify users who saved a listing when it is marked as sold."""
     try:
         from notifications.models import Notification
+        from django.urls import reverse
         for saved in SavedListing.objects.filter(listing=listing).select_related("user"):
             Notification.objects.create(
-                recipient=saved.user,
-                actor=listing.seller,
-                verb="marked a listing as sold",
-                target_object_id=listing.pk,
-                message=f'"{listing.title}" that you saved has been marked as sold.',
+                user=saved.user,
+                notification_type="item_sold",
+                title=f'"{listing.title}" has been sold',
+                message=f'A listing you saved — "{listing.title}" — has been marked as sold.',
+                action_url=reverse("marketplace:listing_detail", kwargs={"pk": listing.pk}),
             )
     except Exception:
         pass

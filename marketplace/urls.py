@@ -16,6 +16,7 @@ urlpatterns = [
     path("listings/<int:pk>/delete/", views.listing_delete, name="listing_delete"),
     path("listings/<int:pk>/mark-sold/", views.mark_sold, name="mark_sold"),
     path("listings/<int:pk>/save/", views.toggle_save, name="toggle_save"),
+    path("photos/<int:pk>/delete/", views.delete_listing_photo, name="delete_listing_photo"),
     path("listings/<int:pk>/report/", views.report_listing, name="report_listing"),
 
     # Wishlist

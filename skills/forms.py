@@ -12,6 +12,7 @@ class SkillOfferingForm(forms.ModelForm):
             "description",
             "category",
             "delivery_method",
+            "status",
             "price_type",
             "price_min",
             "price_max",
@@ -50,6 +51,7 @@ class SkillOfferingForm(forms.ModelForm):
                     "placeholder": "e.g. Weekdays 4pm-8pm, Saturdays all day",
                 }
             ),
+            "status": forms.Select(attrs={"class": "form-select"}),
             "language": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": 'e.g. English, Luganda, Swahili'}
             ),
