@@ -48,7 +48,7 @@ class CloudinaryMediaStorage(Storage):
 
     def url(self, name):
         public_id = self._get_public_id(name)
-        return cloudinary.CloudinaryImage(public_id).build_url()
+        return cloudinary.CloudinaryImage(public_id).build_url(secure=True)
 
     def size(self, name):
         try:

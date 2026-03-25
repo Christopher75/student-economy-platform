@@ -17,6 +17,8 @@
       <div class="card border-0 shadow-sm p-4">
         <form method="post" enctype="multipart/form-data" novalidate>
           {% csrf_token %}
+          {# New skills always start as active; status is managed from My Skills after creation #}
+          <input type="hidden" name="status" value="active">
 
           <div class="row g-3">
             <!-- Title -->
