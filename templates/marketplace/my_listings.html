@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block title %}My Listings – Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="fw-800 mb-0"><i class="bi bi-bag me-2 text-primary"></i>My Listings</h2>
+      <p class="text-muted mb-0 small">Manage all your marketplace listings</p>
+    </div>
+    <a href="{% url 'marketplace:listing_create' %}" class="btn btn-primary fw-600">
+      <i class="bi bi-plus-circle me-2"></i>Post New Listing
+    </a>
+  </div>
+
+  {% if listings %}
+    <!-- Summary tabs -->
+    <div class="d-flex gap-2 mb-4 flex-wrap">
+      {% with available=listings|length %}
+        <span class="badge bg-primary-subtle text-primary px-3 py-2" style="font-size:.85rem;">
+          All: {{ listings|length }}
+        </span>
+      {% endwith %}
+    </div>
+
+    <div class="row g-3">
+      {% for listing in listings %}
+        <div class="col-12 col-md-6 col-lg-4">
+          <div class="card h-100 border-0 shadow-sm overflow-hidden">
+
+            <!-- Listing photo -->
+            {% with photo=listing.get_primary_photo %}
+            <div class="position-relative" style="height:160px;overflow:hidden;">
+              {% if photo %}
+                <img src="{{ photo.image.url }}" alt="{{ listing.title }}"
+                     style="width:100%;height:100%;object-fit:cover;">
+              {% else %}
+                <div class="w-100 h-100 bg-light d-flex align-items-center justify-content-center">
+                  <i class="bi bi-image text-secondary" style="font-size:3rem;"></i>
+                </div>
+              {% endif %}
+              <!-- Status badge overlay -->
+              {% if listing.status == 'available' %}
+                <span class="position-absolute top-0 start-0 m-2 badge bg-success">Available</span>
+              {% elif listing.status == 'sold' %}
+                <span class="position-absolute top-0 start-0 m-2 badge bg-secondary">Sold</span>
+              {% elif listing.status == 'reserved' %}
+                <span class="position-absolute top-0 start-0 m-2 badge bg-warning text-dark">Reserved</span>
+              {% endif %}
+            </div>
+            {% endwith %}
+
+            <div class="card-body p-3">
+              <h6 class="fw-700 mb-1">{{ listing.title|truncatechars:50 }}</h6>
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="fw-800 text-primary">UGX {{ listing.price|floatformat:"0" }}</span>
+                <span class="badge bg-light text-secondary border" style="font-size:.7rem;">{{ listing.get_condition_display }}</span>
+                {% if listing.negotiable %}
+                  <span class="badge bg-success-subtle text-success" style="font-size:.7rem;">Negotiable</span>
+                {% endif %}
+              </div>
+              <p class="text-muted small mb-3" style="line-height:1.4;">{{ listing.description|truncatechars:70 }}</p>
+
+              <!-- Action buttons -->
+              <div class="d-flex gap-2 flex-wrap">
+                <a href="{% url 'marketplace:listing_detail' listing.pk %}" class="btn btn-outline-secondary btn-sm fw-600">
+                  <i class="bi bi-eye me-1"></i>View
+                </a>
+                <a href="{% url 'marketplace:listing_edit' listing.pk %}" class="btn btn-outline-primary btn-sm fw-600">
+                  <i class="bi bi-pencil me-1"></i>Edit
+                </a>
+
+                {% if listing.status == 'available' %}
+                  <!-- Mark as Sold — prominent green button -->
+                  <form method="post" action="{% url 'marketplace:mark_sold' listing.pk %}"
+                        onsubmit="return confirm('Mark \'{{ listing.title|truncatechars:30 }}\' as sold? It will be removed from public search.');">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{% url 'marketplace:my_listings' %}">
+                    <button type="submit" class="btn btn-success btn-sm fw-600">
+                      <i class="bi bi-check2-circle me-1"></i>Mark Sold
+                    </button>
+                  </form>
+                {% elif listing.status == 'sold' %}
+                  <!-- Relist option -->
+                  <form method="post" action="{% url 'marketplace:relist' listing.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-success btn-sm fw-600">
+                      <i class="bi bi-arrow-repeat me-1"></i>Relist
+                    </button>
+                  </form>
+                {% endif %}
+
+                <!-- Delete -->
+                <form method="post" action="{% url 'marketplace:listing_delete' listing.pk %}"
+                      onsubmit="return confirm('Permanently delete this listing?');">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-outline-danger btn-sm">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <!-- Footer: date -->
+            <div class="card-footer bg-transparent border-top-0 px-3 pb-3 pt-0">
+              <small class="text-muted"><i class="bi bi-clock me-1"></i>Posted {{ listing.created_at|timesince }} ago</small>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="text-center py-5">
+      <i class="bi bi-bag d-block mb-3" style="color:#e2e8f0;font-size:5rem;"></i>
+      <h5 class="fw-700">You haven't posted any listings yet</h5>
+      <p class="text-muted mb-4">Sell textbooks, gadgets, and more to fellow students.</p>
+      <a href="{% url 'marketplace:listing_create' %}" class="btn btn-primary fw-600 px-4">
+        <i class="bi bi-plus-circle me-2"></i>Post Your First Listing
+      </a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

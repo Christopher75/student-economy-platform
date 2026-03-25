@@ -81,16 +81,28 @@ class CustomUser(AbstractUser):
         if self.is_verified:
             score += 30
         try:
-            from skills.models import SkillBooking
+            from skills.models import SkillBooking, Review
             from django.db.models import Q
             completed = SkillBooking.objects.filter(
                 Q(client=self) | Q(provider=self),
                 status='completed'
             ).count()
-            score += min(completed * 10, 50)
+            score += min(completed * 10, 30)
+            # Up to 20 points for positive reviews (avg rating ≥ 4)
+            avg = self.get_average_rating()
+            if avg >= 4.5:
+                score += 20
+            elif avg >= 4.0:
+                score += 15
+            elif avg >= 3.0:
+                score += 5
         except Exception:
             pass
         return min(score, 100)
+
+    @property
+    def trust_score(self):
+        return self.get_trust_score()
 
 
 class EmailVerificationToken(models.Model):

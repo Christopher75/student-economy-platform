@@ -164,6 +164,13 @@ def delete_listing_photo(request, pk):
 
 
 @login_required
+def my_listings(request):
+    """Show all listings by the current user, regardless of status."""
+    listings = Listing.objects.filter(seller=request.user).prefetch_related("photos").order_by("-created_at")
+    return render(request, "marketplace/my_listings.html", {"listings": listings})
+
+
+@login_required
 def listing_delete(request, pk):
     listing = get_object_or_404(Listing, pk=pk)
     if listing.seller != request.user:
@@ -172,7 +179,8 @@ def listing_delete(request, pk):
     if request.method == "POST":
         listing.delete()
         messages.success(request, "Listing deleted successfully.")
-        return redirect("marketplace:listing_list")
+        next_url = request.POST.get("next") or request.GET.get("next")
+        return redirect(next_url or "marketplace:my_listings")
 
     return render(request, "marketplace/confirm_delete.html", {"listing": listing})
 
@@ -192,7 +200,24 @@ def mark_sold(request, pk):
     _notify_saved_users_sold(listing)
 
     messages.success(request, f'"{listing.title}" has been marked as sold.')
-    return redirect(listing.get_absolute_url())
+    next_url = request.POST.get("next") or request.GET.get("next")
+    if next_url:
+        return redirect(next_url)
+    return redirect("marketplace:my_listings")
+
+
+@login_required
+def relist(request, pk):
+    """Put a sold/reserved listing back to available."""
+    if request.method != "POST":
+        return HttpResponseForbidden()
+    listing = get_object_or_404(Listing, pk=pk)
+    if listing.seller != request.user:
+        return HttpResponseForbidden("Only the seller can relist.")
+    listing.status = "available"
+    listing.save(update_fields=["status"])
+    messages.success(request, f'"{listing.title}" is now listed as available again.')
+    return redirect("marketplace:my_listings")
 
 
 @login_required
