@@ -192,8 +192,7 @@
           {% endif %}
 
           <div class="d-flex gap-3 mt-4">
-            <button type="submit" class="btn btn-primary fw-600 px-5 py-2"
-                    onclick="this.disabled=true;this.innerHTML='<span class=\'spinner-border spinner-border-sm me-2\'></span>Saving...';this.form.submit();">
+            <button type="submit" id="submitBtn" class="btn btn-primary fw-600 px-5 py-2">
               <i class="bi bi-check-circle me-2"></i>{% if action == 'Edit' %}Save Changes{% else %}Post Listing{% endif %}
             </button>
             <a href="{% url 'marketplace:listing_list' %}" class="btn btn-outline-secondary px-4">Cancel</a>
@@ -208,6 +207,12 @@
 
 {% block extra_js %}
 <script>
+  document.getElementById('submitBtn').closest('form').addEventListener('submit', function() {
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+  });
+
   const photosInput = document.getElementById('photosInput');
   const photoPreviews = document.getElementById('photoPreviews');
   let selectedFiles = [];
