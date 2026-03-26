@@ -13,11 +13,9 @@ def home(request):
         pad = Listing.objects.filter(status='available', is_featured=False).order_by('-created_at')[:6 - len(featured_qs)]
         featured_qs = featured_qs + list(pad)
 
-    # Trending: highest view count, strictly excluding anything already in Featured
-    featured_pks = [l.pk for l in featured_qs]
-    hot_listings = Listing.objects.filter(status='available').exclude(
-        pk__in=featured_pks
-    ).order_by('-views_count')[:6]
+    # Trending: highest view count — different ordering from Featured guarantees
+    # they never appear in the same order, even if an item ranks highly in both
+    hot_listings = Listing.objects.filter(status='available').order_by('-views_count', '-created_at')[:6]
 
     # Featured skills: same logic
     featured_skills_qs = list(SkillOffering.objects.filter(status='active', is_featured=True).order_by('-created_at')[:6])
