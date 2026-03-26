@@ -23,36 +23,40 @@ class ListingListView(ListView):
 
     def get_queryset(self):
         qs = Listing.objects.filter(status="available").select_related("seller", "category")
-        form = ListingSearchForm(self.request.GET)
-        if form.is_valid():
-            query = form.cleaned_data.get("query")
-            category = form.cleaned_data.get("category")
-            condition = form.cleaned_data.get("condition")
-            min_price = form.cleaned_data.get("min_price")
-            max_price = form.cleaned_data.get("max_price")
-            university = form.cleaned_data.get("university")
+        q = self.request.GET.get("q", "").strip()
+        category_slug = self.request.GET.get("category", "")
+        condition = self.request.GET.get("condition", "")
+        min_price = self.request.GET.get("min_price", "")
+        max_price = self.request.GET.get("max_price", "")
+        university = self.request.GET.get("university", "")
+        sort = self.request.GET.get("sort", "-created_at")
 
-            if query:
-                qs = qs.filter(
-                    Q(title__icontains=query) | Q(description__icontains=query)
-                )
-            if category:
-                qs = qs.filter(category=category)
-            if condition:
-                qs = qs.filter(condition=condition)
-            if min_price is not None:
-                qs = qs.filter(price__gte=min_price)
-            if max_price is not None:
-                qs = qs.filter(price__lte=max_price)
-            if university:
-                qs = qs.filter(university__icontains=university)
+        if q:
+            qs = qs.filter(Q(title__icontains=q) | Q(description__icontains=q))
+        if category_slug:
+            qs = qs.filter(category__slug=category_slug)
+        if condition:
+            qs = qs.filter(condition=condition)
+        if min_price:
+            try:
+                qs = qs.filter(price__gte=float(min_price))
+            except ValueError:
+                pass
+        if max_price:
+            try:
+                qs = qs.filter(price__lte=float(max_price))
+            except ValueError:
+                pass
+        if university:
+            qs = qs.filter(university__icontains=university)
 
-        return qs.order_by("-is_featured", "-created_at")
+        allowed_sorts = {"price", "-price", "-created_at", "-views_count"}
+        return qs.order_by("-is_featured", sort if sort in allowed_sorts else "-created_at")
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["search_form"] = ListingSearchForm(self.request.GET)
         ctx["categories"] = Category.objects.all()
+        ctx["condition_choices"] = Listing.CONDITION_CHOICES
         ctx["total_listings"] = self.get_queryset().count()
         return ctx
 
