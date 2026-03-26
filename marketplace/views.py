@@ -53,7 +53,7 @@ class ListingListView(ListView):
         ctx = super().get_context_data(**kwargs)
         ctx["search_form"] = ListingSearchForm(self.request.GET)
         ctx["categories"] = Category.objects.all()
-        ctx["total_count"] = self.get_queryset().count()
+        ctx["total_listings"] = self.get_queryset().count()
         return ctx
 
 

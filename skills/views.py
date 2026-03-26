@@ -55,7 +55,8 @@ class SkillListView(ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["categories"] = SkillCategory.objects.all()
+        ctx["skill_categories"] = SkillCategory.objects.all()
+        ctx["total_skills"] = self.get_queryset().count()
         ctx["delivery_choices"] = SkillOffering.DELIVERY_CHOICES
         ctx["selected_category"] = self.request.GET.get("category", "")
         ctx["selected_delivery"] = self.request.GET.get("delivery_method", "")

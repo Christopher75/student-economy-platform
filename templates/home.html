@@ -156,14 +156,6 @@
           </div>
         {% endfor %}
       </div>
-    {% elif recent_listings %}
-      <div class="row g-3">
-        {% for listing in recent_listings %}
-          <div class="col-6 col-md-4 col-lg-3">
-            {% include 'partials/listing_card.html' with listing=listing %}
-          </div>
-        {% endfor %}
-      </div>
     {% else %}
       {% include 'partials/empty_state.html' with icon="bi-bag-x" title="No listings yet" message="Be the first to post something on campus!" action_url="marketplace:listing_create" action_text="Post a Listing" %}
     {% endif %}
