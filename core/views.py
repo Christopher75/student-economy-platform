@@ -39,6 +39,55 @@ def home(request):
     }
     return render(request, 'home.html', context)
 
+def ticket_detail(request, pk):
+    """
+    Ticket thread page — user sees their original message + all replies.
+    Logged-in owner can also post follow-up messages.
+    """
+    from django.shortcuts import get_object_or_404
+    from .models import SupportReply
+
+    ticket = get_object_or_404(SupportTicket, pk=pk)
+
+    # Security: only the ticket owner (matched by user FK or email) can view
+    is_owner = False
+    if request.user.is_authenticated:
+        if ticket.user == request.user or ticket.email == request.user.email:
+            is_owner = True
+    if not is_owner and not (request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)):
+        messages.error(request, 'You do not have permission to view this ticket.')
+        return redirect('contact')
+
+    # Mark admin replies as read
+    ticket.replies.filter(is_admin_reply=True, read_by_user=False).update(read_by_user=True)
+
+    if request.method == 'POST':
+        reply_message = request.POST.get('reply_message', '').strip()
+        if not reply_message:
+            messages.error(request, 'Please enter a message.')
+        elif ticket.status == 'closed':
+            messages.warning(request, 'This ticket is closed. Please open a new one.')
+        else:
+            SupportReply.objects.create(
+                ticket=ticket,
+                sent_by=request.user if request.user.is_authenticated else None,
+                message=reply_message,
+                is_admin_reply=False,
+                read_by_user=True,
+            )
+            # Reopen if it was resolved
+            if ticket.status == 'resolved':
+                ticket.status = 'in_progress'
+                ticket.save(update_fields=['status'])
+            messages.success(request, 'Your reply has been sent.')
+            return redirect('ticket_detail', pk=ticket.pk)
+
+    return render(request, 'core/ticket_detail.html', {
+        'ticket': ticket,
+        'replies': ticket.replies.all(),
+    })
+
+
 def contact_view(request):
     """Public contact / support form. Works for logged-in and anonymous users."""
     CATEGORY_CHOICES = SupportTicket.CATEGORY_CHOICES
@@ -66,22 +115,26 @@ def contact_view(request):
             )
             messages.success(
                 request,
-                f'Your message has been received (ref: #{ticket.pk}). '
-                'We\'ll respond to your email within 24–48 hours.'
+                f'Your message has been received (Ticket #{ticket.pk}). '
+                'We\'ll respond within 24–48 hours. '
+                'You can track replies on your ticket page.'
             )
-            return redirect('contact')
+            return redirect('ticket_detail', pk=ticket.pk)
 
     # Pre-fill from logged-in user
     initial_name = ''
     initial_email = ''
+    my_tickets = []
     if request.user.is_authenticated:
         initial_name = request.user.display_name
         initial_email = request.user.email
+        my_tickets = SupportTicket.objects.filter(user=request.user).order_by('-created_at')[:5]
 
     return render(request, 'core/contact.html', {
         'category_choices': CATEGORY_CHOICES,
         'initial_name': initial_name,
         'initial_email': initial_email,
+        'my_tickets': my_tickets,
     })
 
 

@@ -359,6 +359,7 @@
           <li class="mb-1"><a href="{% url 'contact' %}?cat=bug"><i class="bi bi-bug me-1"></i>Report a Bug</a></li>
           <li class="mb-1"><a href="{% url 'contact' %}?cat=payment"><i class="bi bi-credit-card me-1"></i>Payment Issues</a></li>
           {% if user.is_authenticated %}
+            <li class="mb-1"><a href="{% url 'contact' %}"><i class="bi bi-ticket-perforated me-1"></i>My Support Tickets</a></li>
             <li class="mb-1"><a href="{% url 'accounts:payment_history' %}"><i class="bi bi-receipt me-1"></i>Payment History</a></li>
           {% endif %}
         </ul>

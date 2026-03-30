@@ -36,4 +36,30 @@ class SupportTicket(models.Model):
         verbose_name_plural = 'Support Tickets'
 
     def __str__(self):
-        return f"[{self.get_category_display()}] {self.subject} — {self.email}"
+        return f"[{self.get_category_display()}] #{self.pk} — {self.subject}"
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('ticket_detail', kwargs={'pk': self.pk})
+
+    @property
+    def has_unread_admin_reply(self):
+        return self.replies.filter(is_admin_reply=True, read_by_user=False).exists()
+
+
+class SupportReply(models.Model):
+    ticket = models.ForeignKey(SupportTicket, on_delete=models.CASCADE, related_name='replies')
+    sent_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    message = models.TextField()
+    is_admin_reply = models.BooleanField(default=False)
+    read_by_user = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+        verbose_name = 'Reply'
+        verbose_name_plural = 'Replies'
+
+    def __str__(self):
+        who = 'Admin' if self.is_admin_reply else (self.sent_by.display_name if self.sent_by else 'User')
+        return f"Reply by {who} on #{self.ticket.pk}"
