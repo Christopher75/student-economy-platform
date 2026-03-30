@@ -1,5 +1,8 @@
-from django.shortcuts import render
-from django.http import HttpResponse
+from django.shortcuts import render, redirect
+from django.contrib import messages
+
+from .models import SupportTicket
+
 
 def home(request):
     """Dynamic homepage showing featured listings, skill offerings, stats"""
@@ -35,6 +38,52 @@ def home(request):
         'total_skills': SkillOffering.objects.filter(status='active').count(),
     }
     return render(request, 'home.html', context)
+
+def contact_view(request):
+    """Public contact / support form. Works for logged-in and anonymous users."""
+    CATEGORY_CHOICES = SupportTicket.CATEGORY_CHOICES
+
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        email = request.POST.get('email', '').strip()
+        category = request.POST.get('category', 'other')
+        subject = request.POST.get('subject', '').strip()
+        message = request.POST.get('message', '').strip()
+
+        valid_cats = [c[0] for c in CATEGORY_CHOICES]
+        if not name or not email or not subject or not message:
+            messages.error(request, 'Please fill in all required fields.')
+        elif category not in valid_cats:
+            messages.error(request, 'Please select a valid category.')
+        else:
+            ticket = SupportTicket.objects.create(
+                user=request.user if request.user.is_authenticated else None,
+                name=name,
+                email=email,
+                category=category,
+                subject=subject,
+                message=message,
+            )
+            messages.success(
+                request,
+                f'Your message has been received (ref: #{ticket.pk}). '
+                'We\'ll respond to your email within 24–48 hours.'
+            )
+            return redirect('contact')
+
+    # Pre-fill from logged-in user
+    initial_name = ''
+    initial_email = ''
+    if request.user.is_authenticated:
+        initial_name = request.user.display_name
+        initial_email = request.user.email
+
+    return render(request, 'core/contact.html', {
+        'category_choices': CATEGORY_CHOICES,
+        'initial_name': initial_name,
+        'initial_email': initial_email,
+    })
+
 
 def handler404(request, exception):
     return render(request, 'errors/404.html', status=404)

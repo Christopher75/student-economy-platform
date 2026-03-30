@@ -95,31 +95,45 @@ class ListingDetailView(DetailView):
         return ctx
 
 
+def _count_active_listings(user):
+    """Count listings that are currently active (available or reserved, not sold/deleted)."""
+    return Listing.objects.filter(seller=user).exclude(status="sold").count()
+
+
 @login_required
 def listing_create(request):
     user = request.user
     listing_limit = user.get_listing_limit()
+    photo_limit = user.get_photo_limit()
+
+    # Block access on GET if already at free limit
+    if listing_limit is not None and _count_active_listings(user) >= listing_limit:
+        if request.method == "GET":
+            messages.warning(
+                request,
+                f"You have reached your free plan limit of {listing_limit} active listings. "
+                "Upgrade to Pro to post unlimited listings."
+            )
+            return redirect("accounts:upgrade")
 
     if request.method == "POST":
         form = ListingForm(request.POST)
         if form.is_valid():
-            # Enforce free-tier limit
-            if listing_limit is not None:
-                current_count = Listing.objects.filter(seller=user, status="available").count()
-                if current_count >= listing_limit:
-                    return render(request, "marketplace/create.html", {
-                        "form": form,
-                        "action": "Create",
-                        "show_upgrade_modal": True,
-                        "listing_limit": listing_limit,
-                    })
+            # Re-check limit on POST (prevents race conditions and direct POST attacks)
+            if listing_limit is not None and _count_active_listings(user) >= listing_limit:
+                return render(request, "marketplace/create.html", {
+                    "form": form,
+                    "action": "Create",
+                    "show_upgrade_modal": True,
+                    "listing_limit": listing_limit,
+                    "photo_limit": photo_limit,
+                })
 
             listing = form.save(commit=False)
             listing.seller = user
             listing.save()
 
-            # Handle simple multi-file photo upload (respect photo limit)
-            photo_limit = user.get_photo_limit()
+            # Respect photo limit strictly
             photo_files = request.FILES.getlist("photos")
             for i, photo_file in enumerate(photo_files[:photo_limit]):
                 ListingPhoto.objects.create(
@@ -142,7 +156,7 @@ def listing_create(request):
             "form": form,
             "action": "Create",
             "listing_limit": listing_limit,
-            "photo_limit": user.get_photo_limit(),
+            "photo_limit": photo_limit,
         },
     )
 
@@ -153,15 +167,18 @@ def listing_edit(request, pk):
     if listing.seller != request.user:
         return HttpResponseForbidden("You are not allowed to edit this listing.")
 
+    photo_limit = request.user.get_photo_limit()
+
     if request.method == "POST":
         form = ListingForm(request.POST, instance=listing)
         if form.is_valid():
             form.save()
 
-            # Add any new photos uploaded
+            # Add new photos — never exceed this user's photo limit
             photo_files = request.FILES.getlist("photos")
             existing_count = listing.photos.count()
-            for i, photo_file in enumerate(photo_files[:max(0, 5 - existing_count)]):
+            slots_remaining = max(0, photo_limit - existing_count)
+            for i, photo_file in enumerate(photo_files[:slots_remaining]):
                 ListingPhoto.objects.create(
                     listing=listing,
                     image=photo_file,
@@ -181,7 +198,7 @@ def listing_edit(request, pk):
             "form": form,
             "listing": listing,
             "action": "Edit",
-            "photo_limit": request.user.get_photo_limit(),
+            "photo_limit": photo_limit,
         },
     )
 

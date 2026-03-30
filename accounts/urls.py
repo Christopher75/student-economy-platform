@@ -58,12 +58,12 @@ urlpatterns = [
     path('dashboard/', views.DashboardView.as_view(), name='dashboard'),
     path('analytics/', views.analytics_view, name='analytics'),
 
-    # Pro subscription
+    # Pro subscription — history MUST come before <str:ref> to avoid URL shadowing
     path('upgrade/', views.upgrade_view, name='upgrade'),
     path('upgrade/start/', views.initiate_payment, name='initiate_payment'),
+    path('payment/history/', views.payment_history, name='payment_history'),
     path('payment/<str:ref>/', views.payment_detail, name='payment_detail'),
     path('payment/<str:ref>/success/', views.payment_success, name='payment_success'),
-    path('payment/history/', views.payment_history, name='payment_history'),
 
     # Admin panel — payments
     path('admin-panel/payments/', views.admin_payments_list, name='admin_payments'),

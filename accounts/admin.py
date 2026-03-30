@@ -3,7 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 from django.utils.translation import gettext_lazy as _
 from django.contrib import messages as django_messages
 
-from .models import CustomUser, EmailVerificationToken
+from .models import CustomUser, EmailVerificationToken, SubscriptionPayment
 
 
 # ---------------------------------------------------------------------------
@@ -130,3 +130,56 @@ class EmailVerificationTokenAdmin(admin.ModelAdmin):
     @admin.display(boolean=True, description='Valid?')
     def is_valid_display(self, obj):
         return obj.is_valid()
+
+
+# ---------------------------------------------------------------------------
+# Subscription Payment admin — with confirm / reject actions
+# ---------------------------------------------------------------------------
+
+@admin.action(description='Confirm selected payments (activate Pro for 30 days)')
+def confirm_payments(modeladmin, request, queryset):
+    from datetime import date, timedelta
+    from django.utils import timezone
+    confirmed = 0
+    for payment in queryset.filter(status='pending'):
+        payment.status = 'confirmed'
+        payment.confirmed_at = timezone.now()
+        payment.confirmed_by = request.user
+        payment.save(update_fields=['status', 'confirmed_at', 'confirmed_by'])
+        user = payment.user
+        user.subscription_tier = 'pro'
+        user.subscription_start = date.today()
+        user.subscription_end = date.today() + timedelta(days=30)
+        user.pro_activated_by = 'manual'
+        user.save(update_fields=['subscription_tier', 'subscription_start', 'subscription_end', 'pro_activated_by'])
+        confirmed += 1
+    modeladmin.message_user(request, f'{confirmed} payment(s) confirmed and Pro activated.')
+
+
+@admin.action(description='Reject selected payments')
+def reject_payments(modeladmin, request, queryset):
+    updated = queryset.filter(status='pending').update(status='rejected')
+    modeladmin.message_user(request, f'{updated} payment(s) rejected.')
+
+
+@admin.register(SubscriptionPayment)
+class SubscriptionPaymentAdmin(admin.ModelAdmin):
+    list_display = (
+        'reference_code', 'user', 'payment_method', 'momo_transaction_id',
+        'phone_number_used', 'status', 'submitted_at', 'confirmed_at', 'confirmed_by',
+    )
+    list_filter = ('status', 'payment_method')
+    search_fields = ('reference_code', 'user__email', 'user__full_name', 'momo_transaction_id', 'phone_number_used')
+    ordering = ('-submitted_at',)
+    readonly_fields = ('reference_code', 'user', 'submitted_at', 'amount')
+    list_per_page = 25
+    actions = [confirm_payments, reject_payments]
+    fieldsets = (
+        ('Payment Details', {
+            'fields': ('reference_code', 'user', 'amount', 'payment_method',
+                       'momo_transaction_id', 'phone_number_used', 'submitted_at'),
+        }),
+        ('Review', {
+            'fields': ('status', 'confirmed_at', 'confirmed_by', 'notes'),
+        }),
+    )

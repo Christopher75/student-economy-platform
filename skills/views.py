@@ -102,24 +102,37 @@ class SkillDetailView(DetailView):
         return ctx
 
 
+def _count_active_skills(user):
+    """Count skills that are currently active or paused (not permanently deleted)."""
+    return SkillOffering.objects.filter(provider=user).exclude(status="inactive").count()
+
+
 @login_required
 def skill_create(request):
     user = request.user
     skill_limit = user.get_skill_limit()
 
+    # Block on GET if already at limit
+    if skill_limit is not None and _count_active_skills(user) >= skill_limit:
+        if request.method == "GET":
+            messages.warning(
+                request,
+                f"You have reached your free plan limit of {skill_limit} skill offerings. "
+                "Upgrade to Pro to offer unlimited skills."
+            )
+            return redirect("accounts:upgrade")
+
     if request.method == "POST":
         form = SkillOfferingForm(request.POST)
         if form.is_valid():
-            # Enforce free-tier limit
-            if skill_limit is not None:
-                current_count = SkillOffering.objects.filter(provider=user, status="active").count()
-                if current_count >= skill_limit:
-                    return render(request, "skills/create.html", {
-                        "form": form,
-                        "action": "Create",
-                        "show_upgrade_modal": True,
-                        "skill_limit": skill_limit,
-                    })
+            # Re-check on POST
+            if skill_limit is not None and _count_active_skills(user) >= skill_limit:
+                return render(request, "skills/create.html", {
+                    "form": form,
+                    "action": "Create",
+                    "show_upgrade_modal": True,
+                    "skill_limit": skill_limit,
+                })
 
             skill = form.save(commit=False)
             skill.provider = user

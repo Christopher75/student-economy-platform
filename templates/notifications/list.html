@@ -24,10 +24,11 @@
       </div>
 
       {% if notifications %}
-        <div class="d-flex flex-column gap-2">
+        <div class="d-flex flex-column gap-2" id="notifList">
           {% for notif in notifications %}
             <a href="{{ notif.action_url|default:'#' }}"
-               class="text-decoration-none"
+               class="text-decoration-none notif-item{% if forloop.counter > 5 %} d-none{% endif %}"
+               data-index="{{ forloop.counter }}"
                {% if not notif.is_read %}
                data-mark-read-url="{% url 'notifications:mark_read' notif.pk %}"
                onclick="markRead(this, event)"
@@ -36,30 +37,32 @@
                 <div class="d-flex align-items-start gap-3">
                   <!-- Icon -->
                   <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0
-                              {% if notif.notification_type == 'message' %}bg-primary-subtle text-primary
-                              {% elif notif.notification_type == 'booking' %}bg-success-subtle text-success
+                              {% if notif.notification_type == 'new_message' %}bg-primary-subtle text-primary
+                              {% elif notif.notification_type == 'booking' or notif.notification_type == 'booking_request' or notif.notification_type == 'booking_accepted' or notif.notification_type == 'booking_rejected' %}bg-success-subtle text-success
                               {% elif notif.notification_type == 'review' %}bg-warning-subtle text-warning
+                              {% elif notif.notification_type == 'pro_activated' %}bg-warning-subtle text-warning
+                              {% elif notif.notification_type == 'pro_expired' or notif.notification_type == 'payment_rejected' %}bg-danger-subtle text-danger
                               {% else %}bg-secondary-subtle text-secondary{% endif %}"
                        style="width:40px;height:40px;font-size:1.1rem;">
-                    {% if notif.notification_type == 'message' %}
-                      <i class="bi bi-chat-dots-fill"></i>
-                    {% elif notif.notification_type == 'booking' %}
-                      <i class="bi bi-calendar-check-fill"></i>
-                    {% elif notif.notification_type == 'review' %}
-                      <i class="bi bi-star-fill"></i>
-                    {% elif notif.notification_type == 'listing' %}
-                      <i class="bi bi-bag-fill"></i>
-                    {% else %}
-                      <i class="bi bi-bell-fill"></i>
+                    {% if notif.notification_type == 'new_message' %}<i class="bi bi-chat-dots-fill"></i>
+                    {% elif 'booking' in notif.notification_type %}<i class="bi bi-calendar-check-fill"></i>
+                    {% elif notif.notification_type == 'review' %}<i class="bi bi-star-fill"></i>
+                    {% elif notif.notification_type == 'pro_activated' %}<i class="bi bi-star-fill"></i>
+                    {% elif notif.notification_type == 'pro_expired' or notif.notification_type == 'payment_rejected' %}<i class="bi bi-exclamation-circle-fill"></i>
+                    {% elif notif.notification_type == 'listing' or notif.notification_type == 'item_sold' %}<i class="bi bi-bag-fill"></i>
+                    {% else %}<i class="bi bi-bell-fill"></i>
                     {% endif %}
                   </div>
 
                   <!-- Content -->
                   <div class="flex-grow-1">
                     <div class="d-flex justify-content-between align-items-start gap-2">
-                      <p class="mb-1 text-dark {% if not notif.is_read %}fw-600{% endif %}">
-                        {{ notif.message }}
-                      </p>
+                      <div>
+                        {% if notif.title %}<div class="fw-600 small mb-0">{{ notif.title }}</div>{% endif %}
+                        <p class="mb-1 text-dark {% if not notif.is_read %}fw-500{% else %}text-muted{% endif %}" style="font-size:.875rem;">
+                          {{ notif.message }}
+                        </p>
+                      </div>
                       {% if not notif.is_read %}
                         <span class="bg-primary rounded-circle flex-shrink-0" style="width:8px;height:8px;margin-top:6px;"></span>
                       {% endif %}
@@ -72,7 +75,15 @@
           {% endfor %}
         </div>
 
-        {% include 'partials/pagination.html' with page_obj=notifications request=request %}
+        <!-- Load More button (shows when there are more than 5) -->
+        {% if notifications|length > 5 %}
+        <div class="text-center mt-3" id="loadMoreWrapper">
+          <button type="button" class="btn btn-outline-secondary fw-600" id="loadMoreBtn" onclick="loadMore()">
+            <i class="bi bi-chevron-down me-1"></i>
+            Show More <span id="remainingCount">({{ notifications|length|add:"-5" }} more)</span>
+          </button>
+        </div>
+        {% endif %}
 
       {% else %}
         <div class="card border-0 shadow-sm">
@@ -87,10 +98,29 @@
 
 {% block extra_js %}
 <script>
+  const BATCH = 5;
+  let shown = 5;
+  const items = document.querySelectorAll('.notif-item');
+  const total = items.length;
+
+  function loadMore() {
+    const next = Math.min(shown + BATCH, total);
+    for (let i = shown; i < next; i++) {
+      items[i].classList.remove('d-none');
+    }
+    shown = next;
+
+    const remaining = total - shown;
+    if (remaining <= 0) {
+      document.getElementById('loadMoreWrapper').remove();
+    } else {
+      document.getElementById('remainingCount').textContent = `(${remaining} more)`;
+    }
+  }
+
   function markRead(el, e) {
     const url = el.dataset.markReadUrl;
     if (url) {
-      // Fire-and-forget mark as read
       fetch(url, {
         method: 'POST',
         headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'}

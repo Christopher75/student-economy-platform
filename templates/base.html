@@ -345,9 +345,21 @@
           {% if user.is_authenticated %}
             <li class="mb-1"><a href="{% url 'accounts:dashboard' %}">Dashboard</a></li>
             <li class="mb-1"><a href="{% url 'accounts:profile' user.username %}">My Profile</a></li>
+            <li class="mb-1"><a href="{% url 'accounts:upgrade' %}">⭐ Upgrade to Pro</a></li>
           {% else %}
             <li class="mb-1"><a href="{% url 'accounts:register' %}">Register</a></li>
             <li class="mb-1"><a href="{% url 'accounts:login' %}">Login</a></li>
+          {% endif %}
+        </ul>
+      </div>
+      <div class="col-6 col-lg-2">
+        <h6 class="text-white fw-600 mb-3">Help & Support</h6>
+        <ul class="list-unstyled small">
+          <li class="mb-1"><a href="{% url 'contact' %}"><i class="bi bi-envelope me-1"></i>Contact Us</a></li>
+          <li class="mb-1"><a href="{% url 'contact' %}?cat=bug"><i class="bi bi-bug me-1"></i>Report a Bug</a></li>
+          <li class="mb-1"><a href="{% url 'contact' %}?cat=payment"><i class="bi bi-credit-card me-1"></i>Payment Issues</a></li>
+          {% if user.is_authenticated %}
+            <li class="mb-1"><a href="{% url 'accounts:payment_history' %}"><i class="bi bi-receipt me-1"></i>Payment History</a></li>
           {% endif %}
         </ul>
       </div>
@@ -355,7 +367,11 @@
     <hr style="border-color:#334155;" class="mt-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center">
       <p class="small mb-0">&copy; 2026 Student Economy Platform. All rights reserved.</p>
-      <p class="small mb-0">Made with <i class="bi bi-heart-fill text-danger"></i> for students</p>
+      <p class="small mb-0">
+        Made with <i class="bi bi-heart-fill text-danger"></i> for students &nbsp;·&nbsp;
+        <a href="{% url 'contact' %}" class="text-muted">Contact Us</a> &nbsp;·&nbsp;
+        <a href="{% url 'contact' %}?cat=bug" class="text-muted">Report a Bug</a>
+      </p>
     </div>
   </div>
 </footer>

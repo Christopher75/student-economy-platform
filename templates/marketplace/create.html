@@ -69,16 +69,27 @@
 
           <!-- New Photos -->
           <div class="mb-4">
-            <label class="form-label fw-600">{% if listing %}Add More Photos{% else %}Photos{% endif %} <span class="text-muted fw-400">(up to 5 total)</span></label>
+            <label class="form-label fw-600">
+              {% if listing %}Add More Photos{% else %}Photos{% endif %}
+              <span class="text-muted fw-400">(up to {{ photo_limit|default:2 }} total)</span>
+              {% if not request.user.is_pro %}
+                <a href="{% url 'accounts:upgrade' %}" class="badge bg-warning text-dark ms-2" style="font-size:.65rem;text-decoration:none;">⭐ Pro gets 5</a>
+              {% endif %}
+            </label>
             <div class="border border-2 border-dashed rounded-3 p-4 text-center" id="dropZone"
                  style="background:#f8fafc;cursor:pointer;">
               <input type="file" name="photos" id="photosInput" multiple accept="image/*" class="d-none">
               <i class="bi bi-cloud-arrow-up text-muted mb-2" style="font-size:2.5rem;"></i>
               <p class="text-muted mb-1 fw-600">Click or drag photos here</p>
-              <p class="text-muted small mb-0">JPG, PNG or WEBP. Max 5 photos.</p>
+              <p class="text-muted small mb-0">JPG, PNG or WEBP. Max {{ photo_limit|default:2 }} photo{{ photo_limit|default:2|pluralize }}.</p>
               <label for="photosInput" class="btn btn-outline-primary btn-sm mt-2">Choose Photos</label>
             </div>
             <div class="d-flex gap-2 flex-wrap mt-3" id="photoPreviews"></div>
+            <div id="photoLimitNote" class="alert alert-warning py-2 small mt-2 d-none">
+              <i class="bi bi-exclamation-triangle-fill me-1"></i>
+              You've reached your photo limit ({{ photo_limit|default:2 }}).
+              {% if not request.user.is_pro %}<a href="{% url 'accounts:upgrade' %}">Upgrade to Pro</a> for 5 photos per listing.{% endif %}
+            </div>
           </div>
 
           <div class="row g-3">
@@ -289,12 +300,18 @@
     renderPreviews();
   };
 
+  const PHOTO_LIMIT = {{ photo_limit|default:2 }};
+
   if (photosInput) {
     photosInput.addEventListener('change', function() {
       const incoming = Array.from(this.files);
       incoming.forEach(f => {
-        if (selectedFiles.length < 5) selectedFiles.push(f);
+        if (selectedFiles.length < PHOTO_LIMIT) selectedFiles.push(f);
       });
+      if (incoming.length > 0 && selectedFiles.length >= PHOTO_LIMIT) {
+        const note = document.getElementById('photoLimitNote');
+        if (note) note.classList.remove('d-none');
+      }
       renderPreviews();
     });
 

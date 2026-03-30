@@ -502,21 +502,42 @@ def analytics_view(request):
     if is_pro:
         try:
             from marketplace.models import Listing
-            from django.db.models import Sum
-            listings = Listing.objects.filter(seller=user)
+            from django.db.models import Sum, Avg, Count
+            all_listings = Listing.objects.filter(seller=user)
+            available = all_listings.filter(status='available')
+            sold = all_listings.filter(status='sold')
+
+            total_views = all_listings.aggregate(t=Sum('views_count'))['t'] or 0
+            total_sold_value = sold.aggregate(t=Sum('price'))['t'] or 0
+
             listing_data = {
-                'total_views': listings.aggregate(total=Sum('views_count'))['total'] or 0,
-                'total_contact_clicks': listings.aggregate(total=Sum('contact_click_count'))['total'] or 0,
-                'top_listing': listings.order_by('-views_count').first(),
+                'total_views': total_views,
+                'available_count': available.count(),
+                'sold_count': sold.count(),
+                'total_sold_value': total_sold_value,
+                'top_listing': all_listings.order_by('-views_count').first(),
+                'avg_price': all_listings.aggregate(a=Avg('price'))['a'] or 0,
+                # Views-to-listing efficiency: avg views per listing
+                'avg_views_per_listing': round(total_views / max(all_listings.count(), 1), 1),
             }
         except Exception:
             pass
         try:
             from skills.models import SkillOffering, SkillBooking
+            from django.db.models import Q
             skills = SkillOffering.objects.filter(provider=user)
+            all_bookings = SkillBooking.objects.filter(provider=user)
+            completed = all_bookings.filter(status='completed').count()
+            accepted = all_bookings.filter(status__in=['accepted', 'completed']).count()
+            total_requests = all_bookings.count()
+
             skill_data = {
-                'total_bookings': SkillBooking.objects.filter(provider=user).count(),
+                'total_bookings': total_requests,
+                'completed_bookings': completed,
+                'acceptance_rate': round((accepted / max(total_requests, 1)) * 100),
                 'top_skill': skills.order_by('-views_count').first(),
+                'active_skills': skills.filter(status='active').count(),
+                'total_skill_views': skills.aggregate(t=Sum('views_count'))['t'] or 0,
             }
         except Exception:
             pass
@@ -526,6 +547,7 @@ def analytics_view(request):
         'listing_data': listing_data,
         'skill_data': skill_data,
         'profile_views': user.profile_view_count,
+        'trust_score': user.trust_score,
     })
 
 
