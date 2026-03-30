@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% block title %}Analytics — Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h2 class="fw-800 mb-0">Analytics Dashboard</h2>
+      <p class="text-muted mb-0">Track your performance on the platform</p>
+    </div>
+    {% if not is_pro %}
+      <a href="{% url 'accounts:upgrade' %}" class="btn fw-700" style="background:#f59e0b;color:#fff;">
+        <i class="bi bi-star-fill me-2"></i>Upgrade to Pro
+      </a>
+    {% else %}
+      <span class="badge" style="background:#f59e0b;color:#fff;font-size:.85rem;padding:6px 14px;border-radius:20px;">⭐ Pro Active — expires {{ request.user.subscription_end|date:"d M Y" }}</span>
+    {% endif %}
+  </div>
+
+  {% if not is_pro %}
+  <!-- Locked overlay for free users -->
+  <div class="position-relative" style="user-select:none;">
+    <div class="row g-4" style="filter:blur(3px);pointer-events:none;">
+      <div class="col-md-6 col-lg-3">
+        <div class="card text-center p-4">
+          <div style="font-size:2.5rem;font-weight:800;color:#2563eb;">247</div>
+          <div class="text-muted small mt-1">Total Listing Views</div>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="card text-center p-4">
+          <div style="font-size:2.5rem;font-weight:800;color:#10b981;">18</div>
+          <div class="text-muted small mt-1">Booking Requests</div>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="card text-center p-4">
+          <div style="font-size:2.5rem;font-weight:800;color:#f59e0b;">82</div>
+          <div class="text-muted small mt-1">Profile Views</div>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="card text-center p-4">
+          <div style="font-size:2.5rem;font-weight:800;color:#ef4444;">5</div>
+          <div class="text-muted small mt-1">Contact Clicks</div>
+        </div>
+      </div>
+    </div>
+    <!-- Lock overlay -->
+    <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background:rgba(248,250,252,.7);border-radius:12px;">
+      <div class="text-center">
+        <div style="font-size:3rem;color:#94a3b8;"><i class="bi bi-lock-fill"></i></div>
+        <h5 class="fw-700 mt-2 mb-1">Analytics is a Pro Feature</h5>
+        <p class="text-muted small mb-3">Upgrade to Pro for UGX 5,000/month to unlock full analytics</p>
+        <a href="{% url 'accounts:upgrade' %}" class="btn fw-700" style="background:#f59e0b;color:#fff;">
+          <i class="bi bi-star-fill me-2"></i>Upgrade to Pro
+        </a>
+      </div>
+    </div>
+  </div>
+
+  {% else %}
+  <!-- Real analytics for Pro users -->
+  <div class="row g-4 mb-4">
+    <div class="col-md-6 col-lg-3">
+      <div class="card text-center p-4">
+        <div style="font-size:2.5rem;font-weight:800;color:#2563eb;">{{ listing_data.total_views|default:"0" }}</div>
+        <div class="text-muted small mt-1"><i class="bi bi-eye me-1"></i>Total Listing Views</div>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+      <div class="card text-center p-4">
+        <div style="font-size:2.5rem;font-weight:800;color:#10b981;">{{ skill_data.total_bookings|default:"0" }}</div>
+        <div class="text-muted small mt-1"><i class="bi bi-calendar-check me-1"></i>Booking Requests</div>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+      <div class="card text-center p-4">
+        <div style="font-size:2.5rem;font-weight:800;color:#f59e0b;">{{ profile_views }}</div>
+        <div class="text-muted small mt-1"><i class="bi bi-person-lines-fill me-1"></i>Profile Views</div>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+      <div class="card text-center p-4">
+        <div style="font-size:2.5rem;font-weight:800;color:#ef4444;">{{ listing_data.total_contact_clicks|default:"0" }}</div>
+        <div class="text-muted small mt-1"><i class="bi bi-cursor-fill me-1"></i>Contact Clicks</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Top listing -->
+    <div class="col-md-6">
+      <div class="card p-4 h-100">
+        <h6 class="fw-700 mb-3"><i class="bi bi-trophy-fill text-warning me-2"></i>Top Performing Listing</h6>
+        {% if listing_data.top_listing %}
+          <div class="d-flex align-items-center gap-3">
+            {% if listing_data.top_listing.get_primary_photo %}
+              <img src="{{ listing_data.top_listing.get_primary_photo.image.url }}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;" alt="">
+            {% else %}
+              <div style="width:60px;height:60px;background:#f1f5f9;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                <i class="bi bi-image text-muted"></i>
+              </div>
+            {% endif %}
+            <div>
+              <div class="fw-600">{{ listing_data.top_listing.title }}</div>
+              <div class="text-muted small">{{ listing_data.top_listing.views_count }} views</div>
+              <a href="{{ listing_data.top_listing.get_absolute_url }}" class="btn btn-outline-primary btn-sm mt-1">View Listing</a>
+            </div>
+          </div>
+        {% else %}
+          <p class="text-muted small mb-0">No listings yet. <a href="{% url 'marketplace:listing_create' %}">Create one!</a></p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Top skill -->
+    <div class="col-md-6">
+      <div class="card p-4 h-100">
+        <h6 class="fw-700 mb-3"><i class="bi bi-lightning-fill text-primary me-2"></i>Top Performing Skill</h6>
+        {% if skill_data.top_skill %}
+          <div>
+            <div class="fw-600">{{ skill_data.top_skill.title }}</div>
+            <div class="text-muted small">{{ skill_data.top_skill.views_count }} views · {{ skill_data.total_bookings }} total bookings</div>
+            <a href="{{ skill_data.top_skill.get_absolute_url }}" class="btn btn-outline-primary btn-sm mt-2">View Skill</a>
+          </div>
+        {% else %}
+          <p class="text-muted small mb-0">No skills yet. <a href="{% url 'skills:skill_create' %}">Offer a skill!</a></p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Account status -->
+    <div class="col-12">
+      <div class="card p-4" style="background:#fef3c7;border-color:#f59e0b;">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+          <div>
+            <h6 class="fw-700 mb-1">⭐ Pro Seller — Active</h6>
+            <div class="text-muted small">Your subscription renews on {{ request.user.subscription_end|date:"d F Y" }}</div>
+          </div>
+          <a href="{% url 'accounts:upgrade' %}" class="btn btn-sm fw-600" style="background:#f59e0b;color:#fff;">Renew / Extend</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

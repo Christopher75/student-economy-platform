@@ -2,7 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Q, Case, When, IntegerField
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import DetailView, ListView
@@ -51,7 +51,15 @@ class ListingListView(ListView):
             qs = qs.filter(university__icontains=university)
 
         allowed_sorts = {"price", "-price", "-created_at", "-views_count"}
-        return qs.order_by("-is_featured", sort if sort in allowed_sorts else "-created_at")
+        # Pro sellers get priority placement
+        qs = qs.annotate(
+            is_pro_seller=Case(
+                When(seller__subscription_tier='pro', then=1),
+                default=0,
+                output_field=IntegerField(),
+            )
+        )
+        return qs.order_by("-is_featured", "-is_pro_seller", sort if sort in allowed_sorts else "-created_at")
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -89,16 +97,31 @@ class ListingDetailView(DetailView):
 
 @login_required
 def listing_create(request):
+    user = request.user
+    listing_limit = user.get_listing_limit()
+
     if request.method == "POST":
         form = ListingForm(request.POST)
         if form.is_valid():
+            # Enforce free-tier limit
+            if listing_limit is not None:
+                current_count = Listing.objects.filter(seller=user, status="available").count()
+                if current_count >= listing_limit:
+                    return render(request, "marketplace/create.html", {
+                        "form": form,
+                        "action": "Create",
+                        "show_upgrade_modal": True,
+                        "listing_limit": listing_limit,
+                    })
+
             listing = form.save(commit=False)
-            listing.seller = request.user
+            listing.seller = user
             listing.save()
 
-            # Handle simple multi-file photo upload
+            # Handle simple multi-file photo upload (respect photo limit)
+            photo_limit = user.get_photo_limit()
             photo_files = request.FILES.getlist("photos")
-            for i, photo_file in enumerate(photo_files[:5]):
+            for i, photo_file in enumerate(photo_files[:photo_limit]):
                 ListingPhoto.objects.create(
                     listing=listing,
                     image=photo_file,
@@ -110,12 +133,17 @@ def listing_create(request):
             messages.success(request, "Your listing has been created successfully!")
             return redirect(listing.get_absolute_url())
     else:
-        form = ListingForm(initial={"university": getattr(request.user, "university", "")})
+        form = ListingForm(initial={"university": getattr(user, "university", "")})
 
     return render(
         request,
         "marketplace/create.html",
-        {"form": form, "action": "Create"},
+        {
+            "form": form,
+            "action": "Create",
+            "listing_limit": listing_limit,
+            "photo_limit": user.get_photo_limit(),
+        },
     )
 
 
@@ -149,7 +177,12 @@ def listing_edit(request, pk):
     return render(
         request,
         "marketplace/create.html",
-        {"form": form, "listing": listing, "action": "Edit"},
+        {
+            "form": form,
+            "listing": listing,
+            "action": "Edit",
+            "photo_limit": request.user.get_photo_limit(),
+        },
     )
 
 

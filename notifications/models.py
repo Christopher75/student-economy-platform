@@ -13,6 +13,9 @@ NOTIFICATION_TYPES = [
     ("listing_reported", "Listing Reported"),
     ("account_verified", "Account Verified"),
     ("price_drop", "Price Drop on Saved Item"),
+    ("pro_activated", "Pro Subscription Activated"),
+    ("pro_expired", "Pro Subscription Expired"),
+    ("payment_rejected", "Payment Rejected"),
 ]
 
 

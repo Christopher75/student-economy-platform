@@ -84,23 +84,39 @@ class ConversationView(LoginRequiredMixin, DetailView):
 
     def post(self, request, *args, **kwargs):
         conversation = self.get_object()
+        user = request.user
+
+        # Enforce daily message limit for free users
+        if not user.can_send_message():
+            form = MessageForm(request.POST)
+            return render(request, self.template_name, {
+                "conversation": conversation,
+                "messages_list": conversation.messages.select_related("sender").all(),
+                "form": form,
+                "other_participant": conversation.get_other_participant(request.user),
+                "message_limit_reached": True,
+            })
+
         form = MessageForm(request.POST)
         if form.is_valid():
-            msg = Message.objects.create(
+            Message.objects.create(
                 conversation=conversation,
-                sender=request.user,
+                sender=user,
                 content=form.cleaned_data["content"],
             )
             # Update last_message_at on the conversation
             conversation.last_message_at = timezone.now()
             conversation.save(update_fields=["last_message_at"])
 
+            # Record the send for daily limit tracking
+            user.record_message_sent()
+
             # Create a notification for the other participant
-            recipient = conversation.get_other_participant(request.user)
+            recipient = conversation.get_other_participant(user)
             if recipient:
                 _create_message_notification(
                     recipient=recipient,
-                    sender=request.user,
+                    sender=user,
                     conversation=conversation,
                 )
 

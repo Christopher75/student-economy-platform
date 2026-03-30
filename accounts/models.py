@@ -1,4 +1,8 @@
+import random
+import string
 import uuid
+from datetime import date
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.urls import reverse
@@ -10,6 +14,15 @@ class CustomUser(AbstractUser):
         ('pending', 'Pending'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
+    ]
+    SUBSCRIPTION_TIER_CHOICES = [
+        ('free', 'Free'),
+        ('pro', 'Pro Seller'),
+    ]
+    PRO_ACTIVATED_BY_CHOICES = [
+        ('manual', 'Manual MoMo'),
+        ('admin', 'Admin Grant'),
+        ('simulated', 'Demo'),
     ]
 
     email = models.EmailField(unique=True)
@@ -26,6 +39,17 @@ class CustomUser(AbstractUser):
     verification_status = models.CharField(max_length=20, choices=VERIFICATION_STATUS, default='pending')
     last_seen = models.DateTimeField(null=True, blank=True)
     reputation_score = models.FloatField(default=0.0)
+
+    # Subscription
+    subscription_tier = models.CharField(max_length=20, choices=SUBSCRIPTION_TIER_CHOICES, default='free')
+    subscription_start = models.DateField(null=True, blank=True)
+    subscription_end = models.DateField(null=True, blank=True)
+    pro_activated_by = models.CharField(max_length=20, choices=PRO_ACTIVATED_BY_CHOICES, null=True, blank=True)
+
+    # Analytics counters
+    profile_view_count = models.IntegerField(default=0)
+    daily_messages_sent = models.IntegerField(default=0)
+    daily_messages_reset_date = models.DateField(null=True, blank=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username', 'full_name', 'student_id', 'university', 'course', 'phone_number']
@@ -55,6 +79,48 @@ class CustomUser(AbstractUser):
         elif delta.days <= 7:
             return 'this_week'
         return 'inactive'
+
+    def is_pro(self):
+        """Returns True if user has an active Pro subscription. Auto-downgrades if expired."""
+        if self.subscription_tier == 'pro':
+            if self.subscription_end and self.subscription_end >= date.today():
+                return True
+            else:
+                # Subscription expired — downgrade automatically
+                self.subscription_tier = 'free'
+                self.save(update_fields=['subscription_tier'])
+                return False
+        return False
+
+    def can_send_message(self):
+        """Check whether user is allowed to send a message today."""
+        if self.is_pro():
+            return True
+        today = date.today()
+        # Reset counter if it's a new day
+        if self.daily_messages_reset_date != today:
+            self.daily_messages_sent = 0
+            self.daily_messages_reset_date = today
+            self.save(update_fields=['daily_messages_sent', 'daily_messages_reset_date'])
+        return self.daily_messages_sent < 15
+
+    def record_message_sent(self):
+        """Increment the daily message counter."""
+        today = date.today()
+        if self.daily_messages_reset_date != today:
+            self.daily_messages_sent = 0
+            self.daily_messages_reset_date = today
+        self.daily_messages_sent += 1
+        self.save(update_fields=['daily_messages_sent', 'daily_messages_reset_date'])
+
+    def get_listing_limit(self):
+        return None if self.is_pro() else 3
+
+    def get_skill_limit(self):
+        return None if self.is_pro() else 2
+
+    def get_photo_limit(self):
+        return 5 if self.is_pro() else 2
 
     def get_average_rating(self):
         try:
@@ -88,7 +154,6 @@ class CustomUser(AbstractUser):
                 status='completed'
             ).count()
             score += min(completed * 10, 30)
-            # Up to 20 points for positive reviews (avg rating ≥ 4)
             avg = self.get_average_rating()
             if avg >= 4.5:
                 score += 20
@@ -117,3 +182,53 @@ class EmailVerificationToken(models.Model):
     def is_valid(self):
         from django.utils import timezone
         return not self.is_used and (timezone.now() - self.created_at).days < 3
+
+
+def _generate_reference_code():
+    chars = string.ascii_uppercase + string.digits
+    for _ in range(100):
+        suffix = ''.join(random.choices(chars, k=4))
+        code = f'SEP-PRO-{suffix}'
+        if not SubscriptionPayment.objects.filter(reference_code=code).exists():
+            return code
+    raise ValueError("Could not generate a unique reference code")
+
+
+class SubscriptionPayment(models.Model):
+    PAYMENT_METHOD_CHOICES = [
+        ('mtn_momo', 'MTN Mobile Money'),
+        ('airtel_money', 'Airtel Money'),
+    ]
+    STATUS_CHOICES = [
+        ('pending', 'Pending Confirmation'),
+        ('confirmed', 'Confirmed'),
+        ('rejected', 'Rejected'),
+    ]
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='subscription_payments')
+    reference_code = models.CharField(max_length=20, unique=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=0, default=5000)
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, blank=True)
+    momo_transaction_id = models.CharField(max_length=100, blank=True)
+    phone_number_used = models.CharField(max_length=20, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    confirmed_by = models.ForeignKey(
+        CustomUser,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='confirmed_payments',
+    )
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-submitted_at']
+
+    def __str__(self):
+        return f"{self.reference_code} — {self.user.display_name} ({self.get_status_display()})"
+
+    def save(self, *args, **kwargs):
+        if not self.reference_code:
+            self.reference_code = _generate_reference_code()
+        super().save(*args, **kwargs)

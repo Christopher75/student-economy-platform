@@ -12,7 +12,7 @@ from django.conf import settings
 from django.urls import reverse
 from django.db.models import Count, Q
 
-from .models import EmailVerificationToken
+from .models import EmailVerificationToken, SubscriptionPayment
 from .forms import RegistrationForm, EmailLoginForm, ProfileEditForm, StudentPasswordChangeForm
 
 User = get_user_model()
@@ -228,6 +228,12 @@ class ProfileView(View):
     def get(self, request, username):
         profile_user = get_object_or_404(User, username=username)
 
+        # Increment profile view count (don't count own views)
+        if request.user != profile_user:
+            User.objects.filter(pk=profile_user.pk).update(
+                profile_view_count=profile_user.profile_view_count + 1
+            )
+
         user_listings = []
         user_skills = []
         user_reviews = []
@@ -404,3 +410,221 @@ class SafePasswordResetView(BasePasswordResetView):
             # SMTP misconfiguration or connection error — still redirect to
             # "sent" page so users don't see a 500 error.
             return redirect(self.success_url)
+
+
+# ---------------------------------------------------------------------------
+# Subscription / Pro Upgrade
+# ---------------------------------------------------------------------------
+
+@login_required
+def upgrade_view(request):
+    """Show Free vs Pro comparison page and start payment if POST."""
+    user = request.user
+    # If already Pro, redirect to analytics
+    if user.is_pro():
+        return redirect('accounts:analytics')
+    return render(request, 'accounts/upgrade.html', {
+        'user': user,
+        'mtn_number': settings.PLATFORM_MTN_NUMBER,
+        'airtel_number': settings.PLATFORM_AIRTEL_NUMBER,
+    })
+
+
+@login_required
+def initiate_payment(request):
+    """Create a SubscriptionPayment record and redirect to payment instructions."""
+    if request.method != 'POST':
+        return redirect('accounts:upgrade')
+    user = request.user
+    if user.is_pro():
+        messages.info(request, 'You already have an active Pro subscription.')
+        return redirect('accounts:analytics')
+    # Check for existing pending payment
+    existing = SubscriptionPayment.objects.filter(user=user, status='pending').first()
+    if existing:
+        return redirect('accounts:payment_detail', ref=existing.reference_code)
+    payment = SubscriptionPayment.objects.create(user=user)
+    return redirect('accounts:payment_detail', ref=payment.reference_code)
+
+
+@login_required
+def payment_detail(request, ref):
+    """Show payment instructions and allow submitting MoMo transaction ID."""
+    payment = get_object_or_404(SubscriptionPayment, reference_code=ref, user=request.user)
+
+    if request.method == 'POST' and payment.status == 'pending':
+        payment_method = request.POST.get('payment_method', '')
+        momo_transaction_id = request.POST.get('momo_transaction_id', '').strip()
+        phone_number_used = request.POST.get('phone_number_used', '').strip()
+
+        valid_methods = [c[0] for c in SubscriptionPayment.PAYMENT_METHOD_CHOICES]
+        if payment_method not in valid_methods:
+            messages.error(request, 'Please select a valid payment method.')
+        elif not momo_transaction_id:
+            messages.error(request, 'Please enter your MoMo transaction ID.')
+        elif not phone_number_used:
+            messages.error(request, 'Please enter the phone number you sent from.')
+        else:
+            payment.payment_method = payment_method
+            payment.momo_transaction_id = momo_transaction_id
+            payment.phone_number_used = phone_number_used
+            payment.save(update_fields=['payment_method', 'momo_transaction_id', 'phone_number_used'])
+            messages.success(request, 'Payment details submitted! We will confirm within 24 hours.')
+            return redirect('accounts:payment_success', ref=payment.reference_code)
+
+    return render(request, 'accounts/payment.html', {
+        'payment': payment,
+        'mtn_number': settings.PLATFORM_MTN_NUMBER,
+        'airtel_number': settings.PLATFORM_AIRTEL_NUMBER,
+    })
+
+
+@login_required
+def payment_success(request, ref):
+    payment = get_object_or_404(SubscriptionPayment, reference_code=ref, user=request.user)
+    return render(request, 'accounts/payment_success.html', {'payment': payment})
+
+
+@login_required
+def payment_history(request):
+    payments = SubscriptionPayment.objects.filter(user=request.user)
+    return render(request, 'accounts/payment_history.html', {'payments': payments})
+
+
+@login_required
+def analytics_view(request):
+    """Pro analytics dashboard. Free users see a locked preview."""
+    user = request.user
+    is_pro = user.is_pro()
+
+    listing_data = {}
+    skill_data = {}
+    if is_pro:
+        try:
+            from marketplace.models import Listing
+            from django.db.models import Sum
+            listings = Listing.objects.filter(seller=user)
+            listing_data = {
+                'total_views': listings.aggregate(total=Sum('views_count'))['total'] or 0,
+                'total_contact_clicks': listings.aggregate(total=Sum('contact_click_count'))['total'] or 0,
+                'top_listing': listings.order_by('-views_count').first(),
+            }
+        except Exception:
+            pass
+        try:
+            from skills.models import SkillOffering, SkillBooking
+            skills = SkillOffering.objects.filter(provider=user)
+            skill_data = {
+                'total_bookings': SkillBooking.objects.filter(provider=user).count(),
+                'top_skill': skills.order_by('-views_count').first(),
+            }
+        except Exception:
+            pass
+
+    return render(request, 'accounts/analytics.html', {
+        'is_pro': is_pro,
+        'listing_data': listing_data,
+        'skill_data': skill_data,
+        'profile_views': user.profile_view_count,
+    })
+
+
+# ---------------------------------------------------------------------------
+# Admin Panel (staff-only)
+# ---------------------------------------------------------------------------
+
+def _staff_required(view_func):
+    """Simple decorator: redirect non-staff to home."""
+    from functools import wraps
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated or not (request.user.is_staff or request.user.is_superuser):
+            return redirect('home')
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+@_staff_required
+def admin_payments_list(request):
+    """Admin view: list all pending payments for review."""
+    status_filter = request.GET.get('status', 'pending')
+    payments = SubscriptionPayment.objects.select_related('user')
+    if status_filter in ('pending', 'confirmed', 'rejected'):
+        payments = payments.filter(status=status_filter)
+    return render(request, 'admin_panel/payments.html', {
+        'payments': payments,
+        'status_filter': status_filter,
+    })
+
+
+@_staff_required
+def admin_payment_confirm(request, pk):
+    """Admin: confirm a payment → activate Pro for 30 days."""
+    if request.method != 'POST':
+        return redirect('accounts:admin_payments')
+    payment = get_object_or_404(SubscriptionPayment, pk=pk)
+    if payment.status != 'pending':
+        messages.warning(request, 'This payment has already been processed.')
+        return redirect('accounts:admin_payments')
+
+    from django.utils import timezone
+    from datetime import timedelta, date
+    payment.status = 'confirmed'
+    payment.confirmed_at = timezone.now()
+    payment.confirmed_by = request.user
+    payment.save(update_fields=['status', 'confirmed_at', 'confirmed_by'])
+
+    user = payment.user
+    user.subscription_tier = 'pro'
+    user.subscription_start = date.today()
+    user.subscription_end = date.today() + timedelta(days=30)
+    user.pro_activated_by = 'manual'
+    user.save(update_fields=['subscription_tier', 'subscription_start', 'subscription_end', 'pro_activated_by'])
+
+    # Notify user
+    try:
+        from notifications.models import Notification
+        Notification.create(
+            user=user,
+            notification_type='pro_activated',
+            title='Pro Subscription Activated!',
+            message=f'Your Pro Seller subscription is now active until {user.subscription_end.strftime("%d %b %Y")}. Enjoy unlimited listings, skills, messages and more!',
+            action_url=reverse('accounts:analytics'),
+        )
+    except Exception:
+        pass
+
+    messages.success(request, f'Pro activated for {user.display_name} until {user.subscription_end}.')
+    return redirect('accounts:admin_payments')
+
+
+@_staff_required
+def admin_payment_reject(request, pk):
+    """Admin: reject a payment with an optional reason."""
+    if request.method != 'POST':
+        return redirect('accounts:admin_payments')
+    payment = get_object_or_404(SubscriptionPayment, pk=pk)
+    if payment.status != 'pending':
+        messages.warning(request, 'This payment has already been processed.')
+        return redirect('accounts:admin_payments')
+
+    reason = request.POST.get('reason', '').strip()
+    payment.status = 'rejected'
+    payment.notes = reason
+    payment.save(update_fields=['status', 'notes'])
+
+    # Notify user
+    try:
+        from notifications.models import Notification
+        Notification.create(
+            user=payment.user,
+            notification_type='payment_rejected',
+            title='Payment Not Confirmed',
+            message=f'Your Pro upgrade payment ({payment.reference_code}) was not confirmed.{" Reason: " + reason if reason else ""} Please contact support or try again.',
+            action_url=reverse('accounts:upgrade'),
+        )
+    except Exception:
+        pass
+
+    messages.success(request, f'Payment {payment.reference_code} rejected.')
+    return redirect('accounts:admin_payments')

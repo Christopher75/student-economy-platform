@@ -54,8 +54,21 @@ urlpatterns = [
     path('profile/edit/', views.EditProfileView.as_view(), name='edit_profile'),
     path('profile/<str:username>/', views.ProfileView.as_view(), name='profile'),
 
-    # Dashboard
+    # Dashboard & analytics
     path('dashboard/', views.DashboardView.as_view(), name='dashboard'),
+    path('analytics/', views.analytics_view, name='analytics'),
+
+    # Pro subscription
+    path('upgrade/', views.upgrade_view, name='upgrade'),
+    path('upgrade/start/', views.initiate_payment, name='initiate_payment'),
+    path('payment/<str:ref>/', views.payment_detail, name='payment_detail'),
+    path('payment/<str:ref>/success/', views.payment_success, name='payment_success'),
+    path('payment/history/', views.payment_history, name='payment_history'),
+
+    # Admin panel — payments
+    path('admin-panel/payments/', views.admin_payments_list, name='admin_payments'),
+    path('admin-panel/payments/<int:pk>/confirm/', views.admin_payment_confirm, name='admin_payment_confirm'),
+    path('admin-panel/payments/<int:pk>/reject/', views.admin_payment_reject, name='admin_payment_reject'),
 
     # Password change (requires login)
     path('password-change/', views.PasswordChangeView.as_view(), name='password_change'),

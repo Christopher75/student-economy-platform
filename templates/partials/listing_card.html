@@ -14,6 +14,9 @@
       <i class="bi bi-lightning-fill"></i> Featured
     </span>
   {% endif %}
+  {% if listing.seller.is_pro %}
+    <span class="position-absolute top-0 start-0 m-2" style="background:#f59e0b;color:#fff;font-size:.6rem;padding:2px 7px;border-radius:10px;font-weight:700;">⭐ Pro</span>
+  {% endif %}
 
   <div class="card-body p-3">
     <div class="d-flex justify-content-between align-items-start mb-1">

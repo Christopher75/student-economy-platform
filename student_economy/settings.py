@@ -19,6 +19,10 @@ CLOUDINARY_CLOUD_NAME = config('CLOUDINARY_CLOUD_NAME', default='')
 CLOUDINARY_API_KEY = config('CLOUDINARY_API_KEY', default='')
 CLOUDINARY_API_SECRET = config('CLOUDINARY_API_SECRET', default='')
 
+# Mobile Money payment numbers (update in .env with real numbers before going live)
+PLATFORM_MTN_NUMBER = config('PLATFORM_MTN_NUMBER', default='077X XXX XXX')
+PLATFORM_AIRTEL_NUMBER = config('PLATFORM_AIRTEL_NUMBER', default='075X XXX XXX')
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',

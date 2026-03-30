@@ -113,6 +113,16 @@
 
         <!-- Message input -->
         <div class="card-footer bg-white border-top p-3">
+          {% if message_limit_reached %}
+            <div class="alert alert-warning mb-2 py-2 small d-flex align-items-center justify-content-between gap-2">
+              <span><i class="bi bi-exclamation-triangle-fill me-2"></i>You've reached your <strong>15 messages/day</strong> limit. Resets tomorrow.</span>
+              <a href="{% url 'accounts:upgrade' %}" class="btn btn-warning btn-sm fw-700 flex-shrink-0">
+                <i class="bi bi-star-fill me-1"></i>Upgrade
+              </a>
+            </div>
+            <textarea class="form-control" rows="1" placeholder="Message limit reached for today..." disabled
+                      style="resize:none;"></textarea>
+          {% else %}
           <form method="post" action="" enctype="multipart/form-data"
                 class="d-flex align-items-end gap-2" id="messageForm">
             {% csrf_token %}
@@ -124,6 +134,7 @@
               <i class="bi bi-send-fill"></i>
             </button>
           </form>
+          {% endif %}
         </div>
       </div>
     </div>

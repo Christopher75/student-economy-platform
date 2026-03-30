@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Q
+from django.db.models import Q, Case, When, IntegerField
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import DetailView, ListView
@@ -51,7 +51,15 @@ class SkillListView(ListView):
         if university:
             qs = qs.filter(university__icontains=university)
 
-        return qs.order_by("-is_featured", "-created_at")
+        # Pro providers get priority placement
+        qs = qs.annotate(
+            is_pro_provider=Case(
+                When(provider__subscription_tier='pro', then=1),
+                default=0,
+                output_field=IntegerField(),
+            )
+        )
+        return qs.order_by("-is_featured", "-is_pro_provider", "-created_at")
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -96,11 +104,25 @@ class SkillDetailView(DetailView):
 
 @login_required
 def skill_create(request):
+    user = request.user
+    skill_limit = user.get_skill_limit()
+
     if request.method == "POST":
         form = SkillOfferingForm(request.POST)
         if form.is_valid():
+            # Enforce free-tier limit
+            if skill_limit is not None:
+                current_count = SkillOffering.objects.filter(provider=user, status="active").count()
+                if current_count >= skill_limit:
+                    return render(request, "skills/create.html", {
+                        "form": form,
+                        "action": "Create",
+                        "show_upgrade_modal": True,
+                        "skill_limit": skill_limit,
+                    })
+
             skill = form.save(commit=False)
-            skill.provider = request.user
+            skill.provider = user
             skill.save()
 
             # Handle simple portfolio image uploads
@@ -116,12 +138,16 @@ def skill_create(request):
             messages.success(request, "Your skill offering has been published!")
             return redirect(skill.get_absolute_url())
     else:
-        form = SkillOfferingForm(initial={"university": getattr(request.user, "university", "")})
+        form = SkillOfferingForm(initial={"university": getattr(user, "university", "")})
 
     return render(
         request,
         "skills/create.html",
-        {"form": form, "action": "Create"},
+        {
+            "form": form,
+            "action": "Create",
+            "skill_limit": skill_limit,
+        },
     )
 
 

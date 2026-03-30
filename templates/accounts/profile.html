@@ -30,7 +30,9 @@
         </div>
         <!-- Name + info -->
         <div class="flex-grow-1 pt-4">
-          <h3 class="fw-800 mb-0">{{ profile_user.full_name }}</h3>
+          <h3 class="fw-800 mb-0">{{ profile_user.full_name }}
+            {% if profile_user.is_pro %}<span class="badge ms-2" style="background:#f59e0b;color:#fff;font-size:.65rem;padding:3px 8px;border-radius:10px;vertical-align:middle;">⭐ Pro</span>{% endif %}
+          </h3>
           <div class="d-flex flex-wrap gap-2 mt-1">
             {% if profile_user.university %}
               <span class="text-muted small"><i class="bi bi-building me-1"></i>{{ profile_user.university }}</span>

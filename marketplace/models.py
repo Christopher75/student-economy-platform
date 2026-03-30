@@ -57,6 +57,7 @@ class Listing(models.Model):
     campus_location = models.CharField(max_length=200, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="available")
     views_count = models.IntegerField(default=0)
+    contact_click_count = models.IntegerField(default=0)
     is_featured = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

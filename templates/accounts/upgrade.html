@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block title %}Upgrade to Pro — Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="text-center mb-5">
+    <h1 class="fw-800" style="font-size:2rem;">Choose Your Plan</h1>
+    <p class="text-muted">Unlock your full potential on the Student Economy Platform</p>
+  </div>
+
+  <div class="row g-4 justify-content-center">
+    <!-- Free Tier -->
+    <div class="col-md-5">
+      <div class="card h-100 border-2" style="border-color:#e2e8f0!important;">
+        <div class="card-body p-4">
+          <div class="text-center mb-4">
+            <h4 class="fw-700">Free</h4>
+            <div style="font-size:2.5rem;font-weight:800;color:#64748b;">UGX 0</div>
+            <div class="text-muted small">Forever free</div>
+          </div>
+          <ul class="list-unstyled">
+            <li class="py-2 border-bottom"><i class="bi bi-check-circle-fill text-success me-2"></i>3 active marketplace listings</li>
+            <li class="py-2 border-bottom"><i class="bi bi-check-circle-fill text-success me-2"></i>2 active skill offerings</li>
+            <li class="py-2 border-bottom"><i class="bi bi-check-circle-fill text-success me-2"></i>2 photos per listing</li>
+            <li class="py-2 border-bottom"><i class="bi bi-check-circle-fill text-success me-2"></i>15 messages per day</li>
+            <li class="py-2 border-bottom"><i class="bi bi-x-circle-fill text-danger me-2"></i>Analytics dashboard</li>
+            <li class="py-2 border-bottom"><i class="bi bi-x-circle-fill text-danger me-2"></i>Priority search placement</li>
+            <li class="py-2"><i class="bi bi-x-circle-fill text-danger me-2"></i>Pro badge</li>
+          </ul>
+          <div class="text-center mt-4">
+            <span class="btn btn-outline-secondary w-100 disabled">Current Plan</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pro Tier -->
+    <div class="col-md-5">
+      <div class="card h-100 border-2" style="border-color:#f59e0b!important;box-shadow:0 8px 30px rgba(245,158,11,.2)!important;">
+        <div class="card-body p-4">
+          <div class="text-center mb-4">
+            <div class="badge mb-2" style="background:#f59e0b;color:#fff;font-size:.75rem;padding:4px 12px;border-radius:20px;">⭐ MOST POPULAR</div>
+            <h4 class="fw-700">Pro Seller</h4>
+            <div style="font-size:2.5rem;font-weight:800;color:#f59e0b;">UGX 5,000</div>
+            <div class="text-muted small">per month</div>
+          </div>
+          <ul class="list-unstyled">
+            <li class="py-2 border-bottom"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Unlimited</strong> listings</li>
+            <li class="py-2 border-bottom"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Unlimited</strong> skill offerings</li>
+            <li class="py-2 border-bottom"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>5 photos</strong> per listing</li>
+            <li class="py-2 border-bottom"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Unlimited</strong> messages</li>
+            <li class="py-2 border-bottom"><i class="bi bi-check-circle-fill text-success me-2"></i>Full analytics dashboard</li>
+            <li class="py-2 border-bottom"><i class="bi bi-check-circle-fill text-success me-2"></i>Priority search placement</li>
+            <li class="py-2"><i class="bi bi-check-circle-fill text-success me-2"></i>⭐ Pro badge on profile & listings</li>
+          </ul>
+          <div class="text-center mt-4">
+            <form method="post" action="{% url 'accounts:initiate_payment' %}">
+              {% csrf_token %}
+              <button type="submit" class="btn w-100 fw-700" style="background:#f59e0b;color:#fff;padding:.75rem;">
+                <i class="bi bi-star-fill me-2"></i>Upgrade to Pro — UGX 5,000/month
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Payment info note -->
+  <div class="text-center mt-4">
+    <p class="text-muted small">
+      <i class="bi bi-shield-check me-1 text-success"></i>
+      Pay via MTN Mobile Money or Airtel Money. Your subscription is activated within 24 hours of payment confirmation.
+    </p>
+    <a href="{% url 'accounts:payment_history' %}" class="text-muted small">View payment history</a>
+  </div>
+</div>
+{% endblock %}
