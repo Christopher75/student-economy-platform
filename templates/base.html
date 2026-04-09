@@ -16,121 +16,49 @@
   <link rel="stylesheet" href="{% static 'css/main.css' %}"  />
 
   <style>
+    /* ---- Design tokens (override main.css for cascade priority) ---- */
     :root {
-      --primary: #2563eb;
-      --primary-dark: #1d4ed8;
-      --primary-light: #dbeafe;
-      --secondary: #10b981;
-      --warning: #f59e0b;
-      --danger: #ef4444;
-      --surface: #f8fafc;
-      --border: #e2e8f0;
-      --text-muted: #64748b;
+      --primary:         #4f46e5;
+      --primary-dark:    #3730a3;
+      --primary-light:   #e0e7ff;
+      --secondary:       #f59e0b;
+      --secondary-dark:  #d97706;
+      --secondary-light: #fef3c7;
+      --success:         #10b981;
+      --danger:          #ef4444;
+      --surface:         #f8fafc;
+      --border:          #e2e8f0;
+      --text-muted:      #64748b;
+      --footer-bg:       #0f172a;
+      --radius-card:     14px;
+      --radius-btn:      9px;
+      --transition-fast: 0.18s ease;
     }
 
     * { font-family: 'Inter', sans-serif; }
 
-    body {
-      background-color: #f8fafc;
-      color: #1e293b;
-    }
-
-    /* ---- Navbar ---- */
-    .navbar-brand .brand-logo {
-      background: var(--primary);
-      color: #fff;
-      font-weight: 800;
-      font-size: 1rem;
-      padding: 4px 10px;
-      border-radius: 8px;
-      letter-spacing: 1px;
-    }
-    .navbar-brand .brand-name {
-      font-weight: 700;
-      font-size: 1rem;
-      color: var(--primary);
-    }
-    .navbar { box-shadow: 0 1px 3px rgba(0,0,0,.08); background: #fff !important; }
-    .nav-link { font-weight: 500; color: #374151 !important; transition: color .15s; }
-    .nav-link:hover, .nav-link.active { color: var(--primary) !important; }
-
-    /* ---- Cards ---- */
-    .card {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      box-shadow: 0 1px 4px rgba(0,0,0,.05);
-      transition: box-shadow .2s, transform .2s;
-    }
-    .card:hover { box-shadow: 0 6px 20px rgba(37,99,235,.12); transform: translateY(-2px); }
-
-    /* ---- Listing / skill cards ---- */
-    .listing-card .card-img-top { height: 180px; object-fit: cover; border-radius: 12px 12px 0 0; }
-    .skill-card .provider-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
-
-    /* ---- Trust badge ---- */
-    .trust-badge {
-      display: inline-flex; align-items: center; gap: 4px;
-      background: #d1fae5; color: #065f46;
-      font-size: .72rem; font-weight: 600;
-      padding: 2px 8px; border-radius: 20px;
-    }
-    .trust-badge.gold { background: #fef3c7; color: #92400e; }
-    .trust-badge.silver { background: #f1f5f9; color: #475569; }
-
-    /* ---- Badges ---- */
-    .badge-condition { font-size: .7rem; }
-    .badge-featured { background: linear-gradient(135deg, #f59e0b, #ef4444); color: #fff; font-size: .68rem; }
+    body { background-color: var(--surface); color: #0f172a; }
 
     /* ---- Hero ---- */
     .hero-section {
-      background: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%);
+      background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 50%, #818cf8 100%);
       color: #fff;
       padding: 80px 0 60px;
     }
     .hero-section h1 { font-size: 2.6rem; font-weight: 800; line-height: 1.2; }
     @media (max-width: 576px) { .hero-section h1 { font-size: 1.8rem; } }
 
-    /* ---- Stats bar ---- */
-    .stats-bar { background: #fff; border-bottom: 1px solid var(--border); }
-    .stat-item .stat-number { font-size: 1.8rem; font-weight: 800; color: var(--primary); }
-    .stat-item .stat-label { font-size: .8rem; color: var(--text-muted); font-weight: 500; }
+    /* ---- Badges ---- */
+    .badge-condition { font-size: .7rem; }
+    .badge-featured { background: linear-gradient(135deg, #f59e0b, #ef4444); color: #fff; font-size: .68rem; }
 
-    /* ---- Section headings ---- */
-    .section-heading { font-size: 1.4rem; font-weight: 700; color: #1e293b; }
-    .section-subtitle { color: var(--text-muted); font-size: .9rem; }
+    /* ---- Skill card provider avatar ---- */
+    .skill-card .provider-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
 
-    /* ---- Filter sidebar ---- */
-    .filter-sidebar { background: #fff; border: 1px solid var(--border); border-radius: 12px; }
-    .filter-sidebar .filter-title { font-size: .85rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
-
-    /* ---- Messaging (see main.css for full rules) ---- */
-
-    /* ---- Conversation list ---- */
-    .conversation-item { border-bottom: 1px solid var(--border); transition: background .15s; cursor: pointer; }
-    .conversation-item:hover { background: var(--primary-light); }
-    .conversation-item.active { background: var(--primary-light); border-left: 3px solid var(--primary); }
-
-    /* ---- How it works ---- */
-    .step-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--primary-light); display: flex; align-items: center; justify-content: center; font-size: 1.6rem; color: var(--primary); margin: 0 auto 1rem; }
-
-    /* ---- Buttons ---- */
-    .btn-primary { background: var(--primary); border-color: var(--primary); }
-    .btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
-    .btn-outline-primary { color: var(--primary); border-color: var(--primary); }
-    .btn-outline-primary:hover { background: var(--primary); border-color: var(--primary); }
-
-    /* ---- Footer ---- */
-    .footer { background: #1e293b; color: #94a3b8; }
-    .footer a { color: #94a3b8; text-decoration: none; }
-    .footer a:hover { color: #fff; }
-    .footer .footer-brand { color: #fff; font-weight: 700; font-size: 1.1rem; }
-
-    /* ---- Misc ---- */
-    .empty-state-icon { font-size: 4rem; color: #cbd5e1; }
-    .chat-area { height: 420px; overflow-y: auto; }
-    .notification-item.unread { background: #eff6ff; border-left: 3px solid var(--primary); }
-    .avatar-lg { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; }
-    .avatar-sm { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+    /* ---- Layout-only rules (not in main.css) ---- */
+    .chat-area   { height: 420px; overflow-y: auto; }
+    .avatar-lg   { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; }
+    .avatar-sm   { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
 
     {% block extra_css %}{% endblock %}
   </style>
