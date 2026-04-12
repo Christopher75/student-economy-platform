@@ -4,9 +4,31 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib import messages as django_messages
 from django.utils import timezone
+from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
 from .models import CustomUser, EmailVerificationToken, SubscriptionPayment
+
+
+# ---------------------------------------------------------------------------
+# Photo preview helper
+# ---------------------------------------------------------------------------
+
+def _photo_tag(field, label='Photo'):
+    """Return an inline <img> tag for a Cloudinary/file ImageField, or '—'."""
+    if not field:
+        return '—'
+    try:
+        url = field.url
+    except Exception:
+        return '—'
+    return format_html(
+        '<a href="{url}" target="_blank">'
+        '<img src="{url}" style="max-height:150px;max-width:220px;'
+        'border-radius:6px;border:1px solid #e2e8f0;" alt="{label}">'
+        '<br><small style="color:#64748b;">Click to enlarge</small></a>',
+        url=url, label=label,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -74,16 +96,39 @@ def _reject_payment(payment, reason=''):
 # Custom admin actions
 # ---------------------------------------------------------------------------
 
-@admin.action(description='Approve selected students (set verification to Approved)')
+@admin.action(description='✅ Approve identity verification for selected users')
 def approve_users(modeladmin, request, queryset):
-    updated = queryset.update(verification_status='approved', is_verified=True)
-    modeladmin.message_user(request, f'{updated} student(s) have been approved.', django_messages.SUCCESS)
+    updated = 0
+    for user in queryset.filter(verification_status='pending'):
+        user.verification_status = 'verified'
+        user.is_verified = True
+        user.verification_reviewed_at = timezone.now()
+        user.verification_reviewed_by = request.user
+        user.save(update_fields=[
+            'verification_status', 'is_verified',
+            'verification_reviewed_at', 'verification_reviewed_by',
+        ])
+        updated += 1
+    modeladmin.message_user(request, f'{updated} student(s) approved.', django_messages.SUCCESS)
 
 
-@admin.action(description='Reject selected students (set verification to Rejected)')
+@admin.action(description='❌ Reject identity verification for selected users')
 def reject_users(modeladmin, request, queryset):
-    updated = queryset.update(verification_status='rejected', is_verified=False)
-    modeladmin.message_user(request, f'{updated} student(s) have been rejected.', django_messages.WARNING)
+    updated = 0
+    reason = 'Rejected via admin panel'
+    for user in queryset.filter(verification_status='pending'):
+        user.verification_status = 'rejected'
+        user.is_verified = False
+        user.verification_reviewed_at = timezone.now()
+        user.verification_reviewed_by = request.user
+        user.verification_rejection_reason = reason
+        user.save(update_fields=[
+            'verification_status', 'is_verified',
+            'verification_reviewed_at', 'verification_reviewed_by',
+            'verification_rejection_reason',
+        ])
+        updated += 1
+    modeladmin.message_user(request, f'{updated} student(s) rejected.', django_messages.WARNING)
 
 
 @admin.action(description='Confirm selected payments (activate Pro for 30 days)')
@@ -131,14 +176,20 @@ class CustomUserAdmin(UserAdmin):
         (None, {'fields': ('username', 'email', 'password')}),
         (_('Personal Information'), {'fields': ('full_name', 'student_id', 'phone_number', 'profile_photo', 'bio')}),
         (_('Academic Details'), {'fields': ('university', 'course', 'year_of_study')}),
-        (_('Verification & Trust'), {'fields': ('is_email_verified', 'is_verified', 'verification_status', 'reputation_score')}),
+        (_('Identity Verification'), {
+            'fields': (
+                'is_email_verified', 'is_verified', 'verification_status',
+                'id_card_preview', 'selfie_preview',
+                'verification_submitted_at', 'verification_reviewed_at',
+                'verification_reviewed_by', 'verification_rejection_reason',
+            ),
+        }),
         (_('Subscription'), {'fields': ('subscription_tier', 'subscription_start', 'subscription_end', 'pro_activated_by')}),
-        (_('Activity'), {'fields': ('last_seen', 'profile_view_count')}),
         (_('Permissions'), {
             'classes': ('collapse',),
             'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
         }),
-        (_('Important Dates'), {'classes': ('collapse',), 'fields': ('last_login', 'date_joined')}),
+        (_('Important Dates'), {'classes': ('collapse',), 'fields': ('last_login', 'date_joined', 'last_seen')}),
     )
 
     add_fieldsets = (
@@ -152,7 +203,19 @@ class CustomUserAdmin(UserAdmin):
         }),
     )
 
-    readonly_fields = ('date_joined', 'last_login', 'last_seen', 'reputation_score', 'profile_view_count')
+    readonly_fields = (
+        'date_joined', 'last_login', 'last_seen',
+        'id_card_preview', 'selfie_preview',
+        'verification_submitted_at', 'verification_reviewed_at', 'verification_reviewed_by',
+    )
+
+    @admin.display(description='ID Card Photo')
+    def id_card_preview(self, obj):
+        return _photo_tag(obj.id_card_photo, 'ID Card')
+
+    @admin.display(description='Selfie Photo')
+    def selfie_preview(self, obj):
+        return _photo_tag(obj.selfie_photo, 'Selfie')
 
 
 # ---------------------------------------------------------------------------
@@ -224,3 +287,106 @@ class SubscriptionPaymentAdmin(admin.ModelAdmin):
                 return  # already saved inside helper
 
         super().save_model(request, obj, form, change)
+
+
+# ---------------------------------------------------------------------------
+# Pending Verifications — dedicated admin section
+# ---------------------------------------------------------------------------
+
+class PendingVerificationProxy(CustomUser):
+    """Proxy so 'Pending Verifications' appears as its own section in admin."""
+    class Meta:
+        proxy = True
+        verbose_name = 'Pending Verification'
+        verbose_name_plural = 'Pending Verifications'
+
+
+@admin.register(PendingVerificationProxy)
+class PendingVerificationAdmin(admin.ModelAdmin):
+    """
+    Shows only users with verification_status='pending'.
+    Admin can see both photos side-by-side and approve/reject individually
+    or in bulk.
+    """
+    list_display = (
+        'full_name', 'email', 'student_id', 'university',
+        'id_card_preview', 'selfie_preview', 'verification_submitted_at',
+    )
+    list_display_links = ('full_name', 'email')
+    search_fields = ('email', 'full_name', 'student_id')
+    ordering = ('verification_submitted_at',)
+    actions = ['approve_selected', 'reject_selected']
+
+    readonly_fields = (
+        'full_name', 'email', 'student_id', 'university', 'course', 'year_of_study',
+        'verification_submitted_at',
+        'id_card_preview', 'selfie_preview',
+        'verification_reviewed_at', 'verification_reviewed_by',
+    )
+    fields = (
+        ('full_name', 'email'),
+        ('student_id', 'university'),
+        ('course', 'year_of_study'),
+        'verification_submitted_at',
+        ('id_card_preview', 'selfie_preview'),
+        'verification_status',
+        'is_verified',
+        'verification_rejection_reason',
+    )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).filter(verification_status='pending')
+
+    @admin.display(description='ID Card')
+    def id_card_preview(self, obj):
+        return _photo_tag(obj.id_card_photo, 'ID Card')
+
+    @admin.display(description='Selfie')
+    def selfie_preview(self, obj):
+        return _photo_tag(obj.selfie_photo, 'Selfie')
+
+    def save_model(self, request, obj, form, change):
+        """Track who reviewed when the status changes."""
+        if change and 'verification_status' in form.changed_data:
+            obj.verification_reviewed_at = timezone.now()
+            obj.verification_reviewed_by = request.user
+            if obj.verification_status == 'verified':
+                obj.is_verified = True
+            elif obj.verification_status == 'rejected':
+                obj.is_verified = False
+        super().save_model(request, obj, form, change)
+
+    @admin.action(description='✅ Approve selected verifications')
+    def approve_selected(self, request, queryset):
+        updated = 0
+        for user in queryset:
+            user.verification_status = 'verified'
+            user.is_verified = True
+            user.verification_reviewed_at = timezone.now()
+            user.verification_reviewed_by = request.user
+            user.save(update_fields=[
+                'verification_status', 'is_verified',
+                'verification_reviewed_at', 'verification_reviewed_by',
+            ])
+            updated += 1
+        self.message_user(request, f'{updated} verification(s) approved.', django_messages.SUCCESS)
+
+    @admin.action(description='❌ Reject selected — photos unclear')
+    def reject_selected(self, request, queryset):
+        updated = 0
+        for user in queryset:
+            user.verification_status = 'rejected'
+            user.is_verified = False
+            user.verification_reviewed_at = timezone.now()
+            user.verification_reviewed_by = request.user
+            user.verification_rejection_reason = 'ID card photo or selfie is unclear or unreadable'
+            user.save(update_fields=[
+                'verification_status', 'is_verified',
+                'verification_reviewed_at', 'verification_reviewed_by',
+                'verification_rejection_reason',
+            ])
+            updated += 1
+        self.message_user(request, f'{updated} verification(s) rejected.', django_messages.WARNING)
+
+    def has_add_permission(self, request):
+        return False  # can't create users from here
