@@ -672,7 +672,7 @@ def analytics_view(request):
 # ---------------------------------------------------------------------------
 
 def _staff_required(view_func):
-    """Simple decorator: redirect non-staff to home."""
+    """Redirect unauthenticated or non-staff users to home."""
     from functools import wraps
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
@@ -682,7 +682,33 @@ def _staff_required(view_func):
     return wrapper
 
 
-@_staff_required
+def _payments_required(view_func):
+    """Allow only users with the can_manage_payments permission (or superuser)."""
+    from functools import wraps
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('home')
+        if request.user.is_superuser or request.user.has_perm('accounts.can_manage_payments'):
+            return view_func(request, *args, **kwargs)
+        return redirect('home')
+    return wrapper
+
+
+def _verification_required(view_func):
+    """Allow only users with the can_review_verifications permission (or superuser)."""
+    from functools import wraps
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('home')
+        if request.user.is_superuser or request.user.has_perm('accounts.can_review_verifications'):
+            return view_func(request, *args, **kwargs)
+        return redirect('home')
+    return wrapper
+
+
+@_payments_required
 def admin_payments_list(request):
     """Admin view: list all pending payments for review."""
     status_filter = request.GET.get('status', 'pending')
@@ -695,7 +721,7 @@ def admin_payments_list(request):
     })
 
 
-@_staff_required
+@_payments_required
 def admin_payment_confirm(request, pk):
     """Admin: confirm a payment → activate Pro for 30 days."""
     if request.method != 'POST':
@@ -736,7 +762,7 @@ def admin_payment_confirm(request, pk):
     return redirect('accounts:admin_payments')
 
 
-@_staff_required
+@_payments_required
 def admin_payment_reject(request, pk):
     """Admin: reject a payment with an optional reason."""
     if request.method != 'POST':
@@ -828,7 +854,7 @@ def verify_identity(request):
     })
 
 
-@_staff_required
+@_verification_required
 def serve_verification_photo(request, photo_type, pk):
     """Serve a verification photo securely — staff only."""
     user = get_object_or_404(User, pk=pk)
@@ -864,7 +890,7 @@ def serve_verification_photo(request, photo_type, pk):
 # Admin Verification Review
 # ---------------------------------------------------------------------------
 
-@_staff_required
+@_verification_required
 def admin_verification_list(request):
     """List all pending verification submissions side-by-side."""
     status_filter = request.GET.get('status', 'pending')
@@ -878,7 +904,7 @@ def admin_verification_list(request):
     })
 
 
-@_staff_required
+@_verification_required
 def admin_verification_approve(request, pk):
     """Approve a verification submission."""
     if request.method != 'POST':
@@ -929,7 +955,7 @@ def admin_verification_approve(request, pk):
     return redirect('accounts:admin_verification')
 
 
-@_staff_required
+@_verification_required
 def admin_verification_reject(request, pk):
     """Reject a verification submission with a reason."""
     if request.method != 'POST':

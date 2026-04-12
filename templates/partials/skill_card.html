@@ -10,18 +10,20 @@
           {{ skill.provider.display_name|first|upper }}
         </div>
       {% endif %}
-      <div class="flex-grow-1 min-w-0">
+      <div class="flex-grow-1" style="min-width:0;overflow:hidden;">
         <div class="fw-600 text-truncate" style="font-size:.82rem;">{{ skill.provider.full_name }}</div>
         <div class="text-muted text-truncate" style="font-size:.72rem;">
           {{ skill.provider.university|default:"University" }}
         </div>
         {% if skill.provider.is_pro or skill.provider.is_verified %}
-          <div class="d-flex flex-wrap gap-1 mt-1">
+          <div class="d-flex flex-wrap gap-1 mt-1" style="max-width:100%;">
             {% if skill.provider.is_pro %}
-              <span class="badge-pro">⭐ Pro</span>
+              <span class="badge-pro" style="white-space:nowrap;">⭐ Pro</span>
             {% endif %}
             {% if skill.provider.is_verified %}
-              <span class="trust-badge"><i class="bi bi-patch-check-fill"></i>Verified</span>
+              <span class="trust-badge" style="white-space:nowrap;font-size:.65rem;padding:2px 6px;">
+                <i class="bi bi-patch-check-fill"></i> Verified
+              </span>
             {% endif %}
           </div>
         {% endif %}

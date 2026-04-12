@@ -89,6 +89,10 @@ class CustomUser(AbstractUser):
     class Meta:
         verbose_name = 'Student'
         verbose_name_plural = 'Students'
+        permissions = [
+            ('can_manage_payments', 'Can manage subscription payments'),
+            ('can_review_verifications', 'Can review identity verifications'),
+        ]
 
     def __str__(self):
         return f"{self.full_name} ({self.email})"

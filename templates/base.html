@@ -14,6 +14,9 @@
   <!-- Custom CSS -->
   {% load static %}
   <link rel="stylesheet" href="{% static 'css/main.css' %}"  />
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="{% static 'images/logo.png' %}">
+  <link rel="apple-touch-icon" href="{% static 'images/logo.png' %}">
 
   <style>
     /* ---- Design tokens (override main.css for cascade priority) ---- */
@@ -177,9 +180,13 @@
               <li><a class="dropdown-item text-warning fw-600" href="{% url 'accounts:upgrade' %}"><i class="bi bi-star-fill me-2"></i>Upgrade to Pro</a></li>
               <li><hr class="dropdown-divider"></li>
               {% endif %}
-              {% if user.is_staff or user.is_superuser %}
+              {% if user.is_superuser or user.has_perm('accounts.can_manage_payments') or user.has_perm('accounts.can_review_verifications') %}
+              {% if user.is_superuser or user.has_perm('accounts.can_manage_payments') %}
               <li><a class="dropdown-item text-info" href="{% url 'accounts:admin_payments' %}"><i class="bi bi-shield-check me-2"></i>Payment Admin</a></li>
+              {% endif %}
+              {% if user.is_superuser or user.has_perm('accounts.can_review_verifications') %}
               <li><a class="dropdown-item text-info" href="{% url 'accounts:admin_verification' %}"><i class="bi bi-person-badge me-2"></i>Verification Admin</a></li>
+              {% endif %}
               <li><hr class="dropdown-divider"></li>
               {% endif %}
               <li>
@@ -212,14 +219,18 @@
             <a class="nav-link text-warning fw-600" href="{% url 'accounts:upgrade' %}"><i class="bi bi-star-fill me-2"></i>Upgrade to Pro</a>
           </li>
           {% endif %}
-          {% if user.is_staff or user.is_superuser %}
+          {% if user.is_superuser or user.has_perm('accounts.can_manage_payments') or user.has_perm('accounts.can_review_verifications') %}
           <li class="nav-item d-lg-none"><hr class="dropdown-divider"></li>
+          {% if user.is_superuser or user.has_perm('accounts.can_manage_payments') %}
           <li class="nav-item d-lg-none">
             <a class="nav-link text-info" href="{% url 'accounts:admin_payments' %}"><i class="bi bi-shield-check me-2"></i>Payment Admin</a>
           </li>
+          {% endif %}
+          {% if user.is_superuser or user.has_perm('accounts.can_review_verifications') %}
           <li class="nav-item d-lg-none">
             <a class="nav-link text-info" href="{% url 'accounts:admin_verification' %}"><i class="bi bi-person-badge me-2"></i>Verification Admin</a>
           </li>
+          {% endif %}
           {% endif %}
           <li class="nav-item d-lg-none"><hr class="dropdown-divider"></li>
           <li class="nav-item d-lg-none">
