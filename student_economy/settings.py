@@ -155,7 +155,7 @@ EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.conso
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Student Economy Platform <noreply@studenteconomy.ug>')
 
 ANYMAIL = {
-    'RESEND_API_KEY': config('RESEND_API_KEY', default=''),
+    'BREVO_API_KEY': config('BREVO_API_KEY', default=''),
 }
 
 # ── Crispy forms ──────────────────────────────────────────────────────────────

@@ -18,10 +18,10 @@ services:
           name: student-economy-db
           property: connectionString
       - key: EMAIL_BACKEND
-        value: anymail.backends.resend.EmailBackend
+        value: anymail.backends.brevo.EmailBackend
       - key: DEFAULT_FROM_EMAIL
-        value: Student Economy Platform <noreply@studenteconomy.ug>
-      - key: RESEND_API_KEY
+        value: Student Economy Platform <your-verified-sender@gmail.com>
+      - key: BREVO_API_KEY
         sync: false
 
 databases:
