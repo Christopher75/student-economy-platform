@@ -1,6 +1,9 @@
 import json
+import logging
 import os
 from datetime import timedelta
+
+logger = logging.getLogger(__name__)
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout, get_user_model
@@ -42,17 +45,21 @@ def _send_otp_email(user, otp_code):
     }
     text_body = render_to_string('accounts/emails/otp_email.txt', context)
     html_body = render_to_string('accounts/emails/otp_email.html', context)
+    # Use EMAIL_HOST_USER as the From address when it is set, so Gmail/Workspace
+    # doesn't reject the send due to a From/authenticated-user mismatch.
+    from_email = settings.EMAIL_HOST_USER or settings.DEFAULT_FROM_EMAIL
     try:
         msg = EmailMultiAlternatives(
             subject=subject,
             body=text_body,
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            from_email=from_email,
             to=[user.email],
         )
         msg.attach_alternative(html_body, 'text/html')
         msg.send(fail_silently=False)
         return True
-    except Exception:
+    except Exception as exc:
+        logger.error('OTP email failed for user %s: %s', user.email, exc, exc_info=True)
         return False
 
 
