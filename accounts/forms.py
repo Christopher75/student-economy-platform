@@ -9,7 +9,13 @@ User = get_user_model()
 
 ALLOWED_EMAIL_DOMAIN = 'students.cavendish.ac.ug'
 MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
-ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/jpg']
+ALLOWED_IMAGE_TYPES = [
+    'image/jpeg', 'image/jpg', 'image/png',
+    'image/heic', 'image/heif',          # iPhone default formats
+    'image/heic-sequence', 'image/heif-sequence',
+    'image/webp',                         # Chrome/Android
+]
+ALLOWED_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.heic', '.heif', '.webp')
 
 
 class RegistrationForm(UserCreationForm):
@@ -43,9 +49,9 @@ class RegistrationForm(UserCreationForm):
         label='Student ID',
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'e.g. cd121356',
+            'placeholder': 'e.g. 121-353',
         }),
-        help_text='Alphanumeric only, e.g. cd121356',
+        help_text='Format: digits-digits, e.g. 121-353',
     )
     university = forms.CharField(
         max_length=150,
@@ -128,9 +134,9 @@ class RegistrationForm(UserCreationForm):
 
     def clean_student_id(self):
         student_id = self.cleaned_data.get('student_id', '').strip()
-        if not re.match(r'^[a-zA-Z0-9]+$', student_id):
+        if not re.match(r'^\d+-\d+$', student_id):
             raise ValidationError(
-                'Student ID must contain only letters and numbers, e.g. cd121356'
+                'Student ID must be in the format 121-353 (digits, hyphen, digits).'
             )
         if User.objects.filter(student_id=student_id).exists():
             raise ValidationError(
@@ -254,11 +260,11 @@ class IdentityVerificationForm(forms.Form):
         help_text=(
             'Take a clear photo of your Cavendish University student ID card. '
             'Make sure your name, student number, and photo on the card are clearly visible. '
-            'Accepted formats: JPG, PNG. Max size: 5 MB.'
+            'Accepted formats: JPG, PNG, HEIC (iPhone), WebP. Max size: 5 MB.'
         ),
         widget=forms.ClearableFileInput(attrs={
             'class': 'form-control',
-            'accept': 'image/jpeg,image/png,image/jpg',
+            'accept': 'image/jpeg,image/png,image/jpg,image/heic,image/heif,image/webp',
         }),
     )
     selfie_photo = forms.ImageField(
@@ -267,11 +273,11 @@ class IdentityVerificationForm(forms.Form):
             'Take a selfie in good lighting facing the camera directly. '
             'Your full face must be clearly visible. '
             'This is compared against the photo on your student ID card to confirm your identity. '
-            'Accepted formats: JPG, PNG. Max size: 5 MB.'
+            'Accepted formats: JPG, PNG, HEIC (iPhone), WebP. Max size: 5 MB.'
         ),
         widget=forms.ClearableFileInput(attrs={
             'class': 'form-control',
-            'accept': 'image/jpeg,image/png,image/jpg',
+            'accept': 'image/jpeg,image/png,image/jpg,image/heic,image/heif,image/webp',
         }),
     )
     consent = forms.BooleanField(
@@ -290,10 +296,12 @@ class IdentityVerificationForm(forms.Form):
                 raise ValidationError('File size must be under 5 MB.')
             content_type = getattr(photo, 'content_type', '')
             name = photo.name.lower()
-            if content_type not in ALLOWED_IMAGE_TYPES and not (
-                name.endswith('.jpg') or name.endswith('.jpeg') or name.endswith('.png')
-            ):
-                raise ValidationError('Only JPG and PNG files are accepted.')
+            has_valid_ext = name.endswith(ALLOWED_EXTENSIONS)
+            has_valid_type = content_type in ALLOWED_IMAGE_TYPES
+            if not has_valid_ext and not has_valid_type:
+                raise ValidationError(
+                    'Accepted formats: JPG, PNG, HEIC (iPhone), WebP.'
+                )
         return photo
 
     def clean_id_card_photo(self):

@@ -4,6 +4,16 @@
 {% block content %}
 <div class="container-fluid py-4 px-4">
 
+  <!-- Admin panel quick nav -->
+  <div class="d-flex gap-2 mb-4 flex-wrap">
+    <a href="{% url 'accounts:admin_payments' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-shield-check me-1"></i>Payment Admin
+    </a>
+    <a href="{% url 'accounts:admin_verification' %}" class="btn btn-sm btn-primary">
+      <i class="bi bi-person-badge me-1"></i>Verification Admin
+    </a>
+  </div>
+
   <div class="d-flex align-items-center justify-content-between mb-4">
     <div>
       <h4 class="fw-800 mb-0">Identity Verification Review</h4>

@@ -179,6 +179,7 @@
               {% endif %}
               {% if user.is_staff or user.is_superuser %}
               <li><a class="dropdown-item text-info" href="{% url 'accounts:admin_payments' %}"><i class="bi bi-shield-check me-2"></i>Payment Admin</a></li>
+              <li><a class="dropdown-item text-info" href="{% url 'accounts:admin_verification' %}"><i class="bi bi-person-badge me-2"></i>Verification Admin</a></li>
               <li><hr class="dropdown-divider"></li>
               {% endif %}
               <li>
@@ -190,9 +191,7 @@
             </ul>
           </li>
           <!-- Mobile menu items (inside collapse) -->
-          <li class="nav-item d-lg-none">
-            <hr class="dropdown-divider">
-          </li>
+          <li class="nav-item d-lg-none"><hr class="dropdown-divider"></li>
           <li class="nav-item d-lg-none">
             <a class="nav-link" href="{% url 'accounts:profile' user.username %}"><i class="bi bi-person me-2"></i>My Profile</a>
           </li>
@@ -200,11 +199,29 @@
             <a class="nav-link" href="{% url 'accounts:dashboard' %}"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a>
           </li>
           <li class="nav-item d-lg-none">
+            <a class="nav-link" href="{% url 'accounts:analytics' %}"><i class="bi bi-bar-chart-line me-2"></i>Analytics{% if not user.is_pro %} <span class="badge bg-secondary ms-1" style="font-size:.6rem;">Pro</span>{% endif %}</a>
+          </li>
+          <li class="nav-item d-lg-none">
             <a class="nav-link" href="{% url 'marketplace:my_listings' %}"><i class="bi bi-bag me-2"></i>My Listings</a>
           </li>
           <li class="nav-item d-lg-none">
             <a class="nav-link" href="{% url 'skills:my_skills' %}"><i class="bi bi-mortarboard me-2"></i>My Skills</a>
           </li>
+          {% if not user.is_pro %}
+          <li class="nav-item d-lg-none">
+            <a class="nav-link text-warning fw-600" href="{% url 'accounts:upgrade' %}"><i class="bi bi-star-fill me-2"></i>Upgrade to Pro</a>
+          </li>
+          {% endif %}
+          {% if user.is_staff or user.is_superuser %}
+          <li class="nav-item d-lg-none"><hr class="dropdown-divider"></li>
+          <li class="nav-item d-lg-none">
+            <a class="nav-link text-info" href="{% url 'accounts:admin_payments' %}"><i class="bi bi-shield-check me-2"></i>Payment Admin</a>
+          </li>
+          <li class="nav-item d-lg-none">
+            <a class="nav-link text-info" href="{% url 'accounts:admin_verification' %}"><i class="bi bi-person-badge me-2"></i>Verification Admin</a>
+          </li>
+          {% endif %}
+          <li class="nav-item d-lg-none"><hr class="dropdown-divider"></li>
           <li class="nav-item d-lg-none">
             <form method="post" action="{% url 'accounts:logout' %}">
               {% csrf_token %}

@@ -842,28 +842,18 @@ def serve_verification_photo(request, photo_type, pk):
     if not field:
         raise Http404
 
-    # If Cloudinary is configured, generate a signed URL
+    # Cloudinary: field.url already returns the CDN URL — redirect directly
     cloudinary_configured = bool(getattr(settings, 'CLOUDINARY_CLOUD_NAME', ''))
     if cloudinary_configured:
         try:
-            import cloudinary
-            import cloudinary.utils
-            public_id = field.name.rsplit('.', 1)[0]
-            url, _ = cloudinary.utils.cloudinary_url(
-                public_id,
-                type='private',
-                sign_url=True,
-                expires_at=int(timezone.now().timestamp()) + 300,
-            )
-            return redirect(url)
+            return redirect(field.url)
         except Exception:
             raise Http404
 
     # Local storage — serve via FileResponse
     try:
-        from django.conf import settings as s
         import mimetypes
-        path = os.path.join(s.MEDIA_ROOT, field.name)
+        path = os.path.join(settings.MEDIA_ROOT, field.name)
         content_type, _ = mimetypes.guess_type(path)
         return FileResponse(open(path, 'rb'), content_type=content_type or 'image/jpeg')
     except FileNotFoundError:
@@ -884,6 +874,7 @@ def admin_verification_list(request):
     return render(request, 'admin_panel/verification.html', {
         'users': users,
         'status_filter': status_filter,
+        'status_choices': [('pending', 'Pending'), ('verified', 'Verified'), ('rejected', 'Rejected')],
     })
 
 

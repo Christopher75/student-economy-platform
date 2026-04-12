@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Q, Case, When, IntegerField
+from django.db.models import Q, Case, When, IntegerField, Avg
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import DetailView, ListView
@@ -24,11 +24,12 @@ class SkillListView(ListView):
         qs = SkillOffering.objects.filter(status="active").select_related("provider", "category")
 
         category_slug = self.request.GET.get("category")
-        delivery = self.request.GET.get("delivery_method")
+        delivery = self.request.GET.get("delivery")   # template sends 'delivery'
         min_price = self.request.GET.get("min_price")
         max_price = self.request.GET.get("max_price")
         university = self.request.GET.get("university")
         query = self.request.GET.get("q")
+        sort = self.request.GET.get("sort", "-created_at")
 
         if query:
             qs = qs.filter(
@@ -51,15 +52,27 @@ class SkillListView(ListView):
         if university:
             qs = qs.filter(university__icontains=university)
 
-        # Pro providers get priority placement
+        # Pro providers get priority placement (only when not explicitly sorting)
         qs = qs.annotate(
             is_pro_provider=Case(
                 When(provider__subscription_tier='pro', then=1),
                 default=0,
                 output_field=IntegerField(),
-            )
+            ),
+            avg_rating=Avg('reviews__rating'),
         )
-        return qs.order_by("-is_featured", "-is_pro_provider", "-created_at")
+
+        VALID_SORTS = {
+            '-created_at': ['-is_featured', '-is_pro_provider', '-created_at'],
+            'min_price':   ['price_min', '-is_pro_provider'],
+            '-min_price':  ['-price_min', '-is_pro_provider'],
+            '-avg_rating': ['-avg_rating', '-is_pro_provider', '-created_at'],
+        }
+        # map template value '-average_rating' → '-avg_rating'
+        if sort == '-average_rating':
+            sort = '-avg_rating'
+        order = VALID_SORTS.get(sort, VALID_SORTS['-created_at'])
+        return qs.order_by(*order)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
