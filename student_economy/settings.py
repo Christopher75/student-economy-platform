@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.humanize',
     # Third-party
+    'anymail',
     'crispy_forms',
     'crispy_bootstrap5',
     'widget_tweaks',
@@ -147,14 +148,15 @@ LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
 # ── Email ─────────────────────────────────────────────────────────────────────
+# Dev: console backend prints emails to the terminal (no sending needed).
+# Production (Render): Resend HTTP API — Render blocks outbound SMTP (port 587),
+# so we use Resend's HTTP API via django-anymail instead.
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@studenteconomy.ug')
-EMAIL_HOST = config('EMAIL_HOST', default='')
-EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
-EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
-EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-EMAIL_TIMEOUT = 10  # Fail after 10 seconds instead of hanging until gunicorn kills the worker
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Student Economy Platform <noreply@studenteconomy.ug>')
+
+ANYMAIL = {
+    'RESEND_API_KEY': config('RESEND_API_KEY', default=''),
+}
 
 # ── Crispy forms ──────────────────────────────────────────────────────────────
 CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'

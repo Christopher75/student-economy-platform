@@ -18,18 +18,10 @@ services:
           name: student-economy-db
           property: connectionString
       - key: EMAIL_BACKEND
-        value: django.core.mail.backends.smtp.EmailBackend
+        value: anymail.backends.resend.EmailBackend
       - key: DEFAULT_FROM_EMAIL
-        value: noreply@studenteconomy.ug
-      - key: EMAIL_HOST
-        value: smtp.gmail.com
-      - key: EMAIL_PORT
-        value: 587
-      - key: EMAIL_USE_TLS
-        value: True
-      - key: EMAIL_HOST_USER
-        sync: false
-      - key: EMAIL_HOST_PASSWORD
+        value: Student Economy Platform <noreply@studenteconomy.ug>
+      - key: RESEND_API_KEY
         sync: false
 
 databases:
