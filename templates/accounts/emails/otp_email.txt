@@ -1,0 +1,14 @@
+Hello {{ user.full_name }},
+
+Welcome to the Student Economy Platform at Cavendish University Uganda.
+
+Your email verification code is:
+
+  {{ otp_code }}
+
+This code is valid for 15 minutes.
+
+If you did not create this account, you can safely ignore this email.
+
+The Student Economy Platform Team
+student-economy-platform.onrender.com

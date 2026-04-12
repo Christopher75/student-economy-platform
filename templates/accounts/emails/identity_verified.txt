@@ -1,0 +1,11 @@
+Hello {{ user.full_name }},
+
+Your identity verification has been approved.
+
+Your Verified Student badge is now visible on your profile and all your listings.
+Other students on the platform can see that your identity has been confirmed.
+
+Thank you for completing verification.
+
+The Student Economy Platform Team
+student-economy-platform.onrender.com

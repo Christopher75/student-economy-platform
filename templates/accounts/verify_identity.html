@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Verify Your Identity – Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-sm-10 col-md-8 col-lg-7">
+
+      {% if rejected %}
+        <div class="alert alert-warning d-flex gap-2 align-items-start mb-4">
+          <i class="bi bi-exclamation-triangle-fill mt-1 flex-shrink-0"></i>
+          <div>
+            <strong>Your previous submission was not approved.</strong><br>
+            Reason: {{ rejection_reason|default:"See your notification for details." }}<br>
+            Please upload clearer photos and resubmit.
+          </div>
+        </div>
+      {% endif %}
+
+      <div class="text-center mb-4">
+        <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
+             style="width:64px;height:64px;background:var(--primary-light);">
+          <i class="bi bi-person-badge-fill" style="font-size:1.8rem;color:var(--primary);"></i>
+        </div>
+        <h2 class="fw-800 mb-1">Verify your student identity</h2>
+        <p class="text-muted mb-0">
+          To get your Verified Student badge, we need to confirm you are a real Cavendish University student.
+          This takes less than a minute and is reviewed within 24 hours.
+        </p>
+      </div>
+
+      <div class="card border-0 shadow-sm p-4">
+        <form method="post" enctype="multipart/form-data" novalidate>
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger mb-3">{{ form.non_field_errors }}</div>
+          {% endif %}
+
+          <!-- ID Card -->
+          <div class="mb-4">
+            <label class="form-label fw-600">
+              {{ form.id_card_photo.label }} <span class="text-danger">*</span>
+            </label>
+            <div class="d-flex gap-3 align-items-start mb-2">
+              <!-- Icon hint -->
+              <div class="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+                   style="width:72px;height:52px;background:#e0e7ff;border:2px dashed var(--primary);">
+                <i class="bi bi-credit-card-fill" style="font-size:1.4rem;color:var(--primary);"></i>
+              </div>
+              <div class="flex-grow-1">
+                {{ form.id_card_photo }}
+                <div class="form-text">{{ form.id_card_photo.help_text }}</div>
+                {% if form.id_card_photo.errors %}
+                  <div class="text-danger small mt-1">{{ form.id_card_photo.errors|join:", " }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Selfie -->
+          <div class="mb-4">
+            <label class="form-label fw-600">
+              {{ form.selfie_photo.label }} <span class="text-danger">*</span>
+            </label>
+            <div class="d-flex gap-3 align-items-start mb-2">
+              <!-- Icon hint -->
+              <div class="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+                   style="width:72px;height:52px;background:#e0e7ff;border:2px dashed var(--primary);">
+                <i class="bi bi-person-circle" style="font-size:1.4rem;color:var(--primary);"></i>
+              </div>
+              <div class="flex-grow-1">
+                {{ form.selfie_photo }}
+                <div class="form-text">{{ form.selfie_photo.help_text }}</div>
+                {% if form.selfie_photo.errors %}
+                  <div class="text-danger small mt-1">{{ form.selfie_photo.errors|join:", " }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Privacy notice -->
+          <div class="rounded-2 p-3 mb-4" style="background:#f1f5f9;border-left:3px solid var(--primary);">
+            <p class="mb-0 text-muted" style="font-size:.85rem;">
+              <i class="bi bi-lock-fill me-1" style="color:var(--primary);"></i>
+              Your photos are used only for identity verification and are never shared publicly or with
+              third parties. They are stored securely and only accessible to authorised platform administrators.
+            </p>
+          </div>
+
+          <!-- Consent checkbox -->
+          <div class="form-check mb-4">
+            {{ form.consent }}
+            <label class="form-check-label text-muted small" for="{{ form.consent.id_for_label }}">
+              {{ form.consent.label }}
+            </label>
+            {% if form.consent.errors %}
+              <div class="text-danger small">{{ form.consent.errors|join:", " }}</div>
+            {% endif %}
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 fw-600 py-2">
+            <i class="bi bi-upload me-2"></i>Submit for verification
+          </button>
+        </form>
+      </div>
+
+      <!-- Skip for now -->
+      <div class="text-center mt-3">
+        <a href="{% url 'accounts:dashboard' %}" class="text-muted" style="font-size:.875rem;">
+          Skip for now — I'll do this later
+        </a>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

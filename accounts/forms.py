@@ -1,3 +1,5 @@
+import re
+
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm, PasswordChangeForm
 from django.contrib.auth import get_user_model
@@ -5,15 +7,20 @@ from django.core.exceptions import ValidationError
 
 User = get_user_model()
 
+ALLOWED_EMAIL_DOMAIN = 'students.cavendish.ac.ug'
+MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
+ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/jpg']
+
 
 class RegistrationForm(UserCreationForm):
     email = forms.EmailField(
         widget=forms.EmailInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Enter your university email',
+            'placeholder': f'yourname@{ALLOWED_EMAIL_DOMAIN}',
             'autocomplete': 'email',
+            'id': 'id_email',
         }),
-        help_text='Use your official university email address.',
+        help_text=f'Only @{ALLOWED_EMAIL_DOMAIN} addresses are accepted.',
     )
     username = forms.CharField(
         max_length=150,
@@ -36,8 +43,9 @@ class RegistrationForm(UserCreationForm):
         label='Student ID',
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'e.g. 21/U/1234',
+            'placeholder': 'e.g. cd121356',
         }),
+        help_text='Alphanumeric only, e.g. cd121356',
     )
     university = forms.CharField(
         max_length=150,
@@ -59,10 +67,12 @@ class RegistrationForm(UserCreationForm):
     )
     phone_number = forms.CharField(
         max_length=20,
+        required=False,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
             'placeholder': '+256 700 000000',
         }),
+        help_text='Your phone number is used for account security. SMS verification will be available soon.',
     )
 
     def clean_year_of_study(self):
@@ -104,14 +114,29 @@ class RegistrationForm(UserCreationForm):
 
     def clean_email(self):
         email = self.cleaned_data.get('email', '').lower().strip()
+        # Domain gate — server-side (client-side JS mirrors this)
+        if not email.endswith(f'@{ALLOWED_EMAIL_DOMAIN}'):
+            raise ValidationError(
+                'Only Cavendish University Uganda student emails are accepted. '
+                f'Please use your @{ALLOWED_EMAIL_DOMAIN} address.'
+            )
         if User.objects.filter(email=email).exists():
-            raise ValidationError('A student account with this email already exists.')
+            raise ValidationError(
+                'An account with this email already exists. Try logging in instead.'
+            )
         return email
 
     def clean_student_id(self):
         student_id = self.cleaned_data.get('student_id', '').strip()
+        if not re.match(r'^[a-zA-Z0-9]+$', student_id):
+            raise ValidationError(
+                'Student ID must contain only letters and numbers, e.g. cd121356'
+            )
         if User.objects.filter(student_id=student_id).exists():
-            raise ValidationError('This student ID is already registered.')
+            raise ValidationError(
+                'This student ID is already registered on the platform. '
+                'If you believe this is an error, contact support.'
+            )
         return student_id
 
     def clean_username(self):
@@ -165,6 +190,7 @@ class ProfileEditForm(forms.ModelForm):
         widget=forms.Select(attrs={'class': 'form-select'}),
     )
     phone_number = forms.CharField(
+        required=False,
         max_length=20,
         widget=forms.TextInput(attrs={'class': 'form-control'}),
     )
@@ -220,3 +246,58 @@ class StudentPasswordChangeForm(PasswordChangeForm):
             'autocomplete': 'new-password',
         }),
     )
+
+
+class IdentityVerificationForm(forms.Form):
+    id_card_photo = forms.ImageField(
+        label='Photo of your student ID card',
+        help_text=(
+            'Take a clear photo of your Cavendish University student ID card. '
+            'Make sure your name, student number, and photo on the card are clearly visible. '
+            'Accepted formats: JPG, PNG. Max size: 5 MB.'
+        ),
+        widget=forms.ClearableFileInput(attrs={
+            'class': 'form-control',
+            'accept': 'image/jpeg,image/png,image/jpg',
+        }),
+    )
+    selfie_photo = forms.ImageField(
+        label='A clear photo of your face',
+        help_text=(
+            'Take a selfie in good lighting facing the camera directly. '
+            'Your full face must be clearly visible. '
+            'This is compared against the photo on your student ID card to confirm your identity. '
+            'Accepted formats: JPG, PNG. Max size: 5 MB.'
+        ),
+        widget=forms.ClearableFileInput(attrs={
+            'class': 'form-control',
+            'accept': 'image/jpeg,image/png,image/jpg',
+        }),
+    )
+    consent = forms.BooleanField(
+        required=True,
+        label=(
+            'I confirm these photos show my real identity and I am a currently enrolled '
+            'student at Cavendish University Uganda.'
+        ),
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+    )
+
+    def _validate_photo(self, field_name):
+        photo = self.cleaned_data.get(field_name)
+        if photo:
+            if photo.size > MAX_PHOTO_SIZE_BYTES:
+                raise ValidationError('File size must be under 5 MB.')
+            content_type = getattr(photo, 'content_type', '')
+            name = photo.name.lower()
+            if content_type not in ALLOWED_IMAGE_TYPES and not (
+                name.endswith('.jpg') or name.endswith('.jpeg') or name.endswith('.png')
+            ):
+                raise ValidationError('Only JPG and PNG files are accepted.')
+        return photo
+
+    def clean_id_card_photo(self):
+        return self._validate_photo('id_card_photo')
+
+    def clean_selfie_photo(self):
+        return self._validate_photo('selfie_photo')

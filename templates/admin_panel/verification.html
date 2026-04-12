@@ -1,0 +1,209 @@
+{% extends 'base.html' %}
+{% block title %}Identity Verification Review – Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-4">
+
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h4 class="fw-800 mb-0">Identity Verification Review</h4>
+      <p class="text-muted mb-0" style="font-size:.9rem;">Review student ID card and selfie submissions side by side.</p>
+    </div>
+    <div class="d-flex gap-2">
+      {% for s, label in status_choices %}
+        <a href="?status={{ s }}"
+           class="btn btn-sm {% if status_filter == s %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+          {{ label }}
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% if not users %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-patch-check" style="font-size:3rem;opacity:.4;"></i>
+      <p class="mt-2">No {{ status_filter }} submissions.</p>
+    </div>
+  {% endif %}
+
+  {% for user in users %}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-transparent d-flex align-items-center justify-content-between py-3">
+      <div class="d-flex align-items-center gap-2">
+        {% if user.profile_photo %}
+          <img src="{{ user.profile_photo.url }}" class="rounded-circle" style="width:36px;height:36px;object-fit:cover;">
+        {% else %}
+          <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-700"
+               style="width:36px;height:36px;font-size:.85rem;">{{ user.full_name|first|upper }}</div>
+        {% endif %}
+        <div>
+          <span class="fw-700">{{ user.full_name }}</span>
+          <span class="text-muted ms-2" style="font-size:.85rem;">{{ user.email }}</span>
+        </div>
+      </div>
+      <div>
+        {% if user.verification_status == 'pending' %}
+          <span class="badge bg-warning text-dark">Pending Review</span>
+        {% elif user.verification_status == 'verified' %}
+          <span class="badge bg-success">Verified</span>
+        {% elif user.verification_status == 'rejected' %}
+          <span class="badge bg-danger">Rejected</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card-body">
+      <div class="row g-4">
+
+        <!-- Photos -->
+        <div class="col-md-6">
+          <div class="row g-3">
+            <div class="col-6">
+              <p class="fw-600 mb-2 small text-muted text-uppercase" style="letter-spacing:.05em;">Student ID Card</p>
+              {% if user.id_card_photo %}
+                <a href="{% url 'accounts:serve_verification_photo' 'id_card' user.pk %}" target="_blank">
+                  <img src="{% url 'accounts:serve_verification_photo' 'id_card' user.pk %}"
+                       class="img-fluid rounded shadow-sm" style="width:100%;height:200px;object-fit:cover;"
+                       alt="ID Card">
+                  <p class="text-muted mt-1 mb-0" style="font-size:.75rem;">Click to open full size</p>
+                </a>
+              {% else %}
+                <div class="rounded bg-light d-flex align-items-center justify-content-center" style="height:200px;">
+                  <span class="text-muted">No photo</span>
+                </div>
+              {% endif %}
+            </div>
+            <div class="col-6">
+              <p class="fw-600 mb-2 small text-muted text-uppercase" style="letter-spacing:.05em;">Selfie</p>
+              {% if user.selfie_photo %}
+                <a href="{% url 'accounts:serve_verification_photo' 'selfie' user.pk %}" target="_blank">
+                  <img src="{% url 'accounts:serve_verification_photo' 'selfie' user.pk %}"
+                       class="img-fluid rounded shadow-sm" style="width:100%;height:200px;object-fit:cover;"
+                       alt="Selfie">
+                  <p class="text-muted mt-1 mb-0" style="font-size:.75rem;">Click to open full size</p>
+                </a>
+              {% else %}
+                <div class="rounded bg-light d-flex align-items-center justify-content-center" style="height:200px;">
+                  <span class="text-muted">No photo</span>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Student details -->
+        <div class="col-md-6">
+          <p class="fw-600 mb-2 small text-muted text-uppercase" style="letter-spacing:.05em;">Registered Details</p>
+          <table class="table table-sm" style="font-size:.9rem;">
+            <tr><th class="text-muted fw-500" width="40%">Full Name</th><td>{{ user.full_name }}</td></tr>
+            <tr><th class="text-muted fw-500">Student ID</th><td>{{ user.student_id }}</td></tr>
+            <tr><th class="text-muted fw-500">University</th><td>{{ user.university }}</td></tr>
+            <tr><th class="text-muted fw-500">Course</th><td>{{ user.course }}</td></tr>
+            <tr><th class="text-muted fw-500">Year</th><td>Year {{ user.year_of_study }}</td></tr>
+            <tr><th class="text-muted fw-500">Phone</th><td>{{ user.phone_number|default:"Not provided" }}</td></tr>
+            <tr><th class="text-muted fw-500">Email</th><td>{{ user.email }}</td></tr>
+            <tr><th class="text-muted fw-500">Submitted</th>
+                <td>{{ user.verification_submitted_at|date:"d M Y, H:i"|default:"–" }}</td></tr>
+            {% if user.verification_rejection_reason %}
+            <tr><th class="text-muted fw-500">Prev. Rejection</th>
+                <td class="text-danger">{{ user.verification_rejection_reason }}</td></tr>
+            {% endif %}
+          </table>
+
+          {% if user.verification_status == 'pending' %}
+            <!-- Admin checklist (visual only) -->
+            <div class="rounded-2 p-3 mb-3" style="background:#fef9c3;border-left:3px solid #f59e0b;">
+              <p class="fw-600 mb-2" style="font-size:.85rem;">Before approving, confirm:</p>
+              <ul class="mb-0 ps-3" style="font-size:.82rem;color:#92400e;">
+                <li>The name on the ID card matches the registered name.</li>
+                <li>The student ID on the card matches the ID entered.</li>
+                <li>The face in the selfie matches the photo on the card.</li>
+                <li>The ID card appears genuine and is from Cavendish University Uganda.</li>
+              </ul>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="d-flex gap-2">
+              <form method="post" action="{% url 'accounts:admin_verification_approve' user.pk %}" class="flex-fill">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success w-100 fw-600"
+                        onclick="return confirm('Approve identity verification for {{ user.full_name }}?')">
+                  <i class="bi bi-check-circle-fill me-1"></i>Approve
+                </button>
+              </form>
+              <button type="button" class="btn btn-danger flex-fill fw-600"
+                      data-bs-toggle="modal"
+                      data-bs-target="#rejectModal{{ user.pk }}">
+                <i class="bi bi-x-circle-fill me-1"></i>Reject
+              </button>
+            </div>
+          {% endif %}
+
+          {% if user.verification_status == 'verified' %}
+            <div class="d-flex align-items-center gap-2 text-success">
+              <i class="bi bi-patch-check-fill fs-5"></i>
+              <span class="fw-600">Approved by {{ user.verification_reviewed_by.display_name|default:"Admin" }}
+                on {{ user.verification_reviewed_at|date:"d M Y" }}</span>
+            </div>
+          {% endif %}
+
+          {% if user.verification_status == 'rejected' %}
+            <div class="text-danger fw-600 mb-2">
+              <i class="bi bi-x-circle-fill me-1"></i>Rejected: {{ user.verification_rejection_reason }}
+            </div>
+            <p class="text-muted small">Student can resubmit from their account.</p>
+          {% endif %}
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Reject Modal -->
+  {% if user.verification_status == 'pending' %}
+  <div class="modal fade" id="rejectModal{{ user.pk }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <form method="post" action="{% url 'accounts:admin_verification_reject' user.pk %}">
+          {% csrf_token %}
+          <div class="modal-header">
+            <h6 class="modal-title fw-700">Reject verification — {{ user.full_name }}</h6>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <label class="form-label fw-600">Reason <span class="text-danger">*</span></label>
+            <select name="reason" class="form-select mb-3" required>
+              <option value="">Select a reason…</option>
+              <option value="ID card photo is unclear or unreadable">ID card photo is unclear or unreadable</option>
+              <option value="Selfie photo is unclear or face not visible">Selfie photo is unclear or face not visible</option>
+              <option value="Name on ID card does not match registered name">Name on ID card does not match registered name</option>
+              <option value="Student ID number does not match">Student ID number does not match</option>
+              <option value="ID card does not appear genuine">ID card does not appear genuine</option>
+              <option value="Face in selfie does not match ID card photo">Face in selfie does not match ID card photo</option>
+              <option value="Other">Other (explain in notes)</option>
+            </select>
+            <label class="form-label fw-600">Additional notes (optional)</label>
+            <textarea name="notes" class="form-control" rows="3"
+                      placeholder="Any specific detail to help the student resubmit correctly…"></textarea>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-danger fw-600">Confirm Rejection</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% endfor %}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Pass status choices from context
+  const statusChoices = [['pending','Pending'],['verified','Verified'],['rejected','Rejected']];
+</script>
+{% endblock %}

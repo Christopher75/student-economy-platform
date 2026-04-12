@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Verify Your Email – Student Economy Platform{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-sm-10 col-md-7 col-lg-5">
+
+      <div class="text-center mb-4">
+        <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
+             style="width:64px;height:64px;background:var(--primary-light);">
+          <i class="bi bi-envelope-check-fill" style="font-size:1.8rem;color:var(--primary);"></i>
+        </div>
+        <h2 class="fw-800 mb-1">Check your email</h2>
+        <p class="text-muted mb-0">We sent a 6-digit code to</p>
+        <p class="fw-700" style="color:var(--primary);font-size:1.05rem;">{{ masked_email }}</p>
+      </div>
+
+      <div class="card border-0 shadow-sm p-4">
+
+        {% if error %}
+          <div class="alert alert-danger d-flex gap-2 align-items-start mb-3">
+            <i class="bi bi-exclamation-triangle-fill mt-1 flex-shrink-0"></i>
+            <span>{{ error }}</span>
+          </div>
+        {% endif %}
+
+        <form method="post" id="otpForm" novalidate>
+          {% csrf_token %}
+
+          <label class="form-label fw-600 d-block text-center mb-3">Enter your 6-digit code</label>
+
+          <!-- Six separate digit inputs for UX; combined into hidden field on submit -->
+          <div class="d-flex justify-content-center gap-2 mb-4" id="otpInputs">
+            {% for i in "123456" %}
+              <input type="text"
+                     class="form-control text-center fw-800 otp-digit"
+                     maxlength="1"
+                     inputmode="numeric"
+                     pattern="[0-9]"
+                     autocomplete="one-time-code"
+                     style="width:52px;height:60px;font-size:1.6rem;border-radius:10px;border:2px solid var(--border);">
+            {% endfor %}
+          </div>
+          <input type="hidden" name="otp_code" id="otpHidden">
+
+          <button type="submit" class="btn btn-primary w-100 fw-600 py-2 mb-3" id="verifyBtn">
+            <i class="bi bi-shield-check me-2"></i>Verify my account
+          </button>
+        </form>
+
+        <div class="text-center">
+          <p class="text-muted mb-1" style="font-size:.9rem;">Didn't receive the code?</p>
+          <button id="resendBtn" class="btn btn-link p-0 fw-600" style="font-size:.9rem;" disabled>
+            Resend code
+          </button>
+          <span id="resendTimer" class="text-muted ms-1" style="font-size:.85rem;"></span>
+        </div>
+
+      </div>
+
+      <p class="text-center text-muted mt-3" style="font-size:.8rem;">
+        The code expires after 15 minutes. Check your spam folder if you don't see it.
+      </p>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const digits = document.querySelectorAll('.otp-digit');
+  const hidden = document.getElementById('otpHidden');
+  const form = document.getElementById('otpForm');
+  const verifyBtn = document.getElementById('verifyBtn');
+  const resendBtn = document.getElementById('resendBtn');
+  const resendTimer = document.getElementById('resendTimer');
+
+  // Auto-focus first empty digit on page load
+  digits[0].focus();
+
+  // Navigate between digit boxes
+  digits.forEach((input, idx) => {
+    input.addEventListener('input', () => {
+      input.value = input.value.replace(/[^0-9]/g, '').slice(-1);
+      if (input.value && idx < digits.length - 1) {
+        digits[idx + 1].focus();
+      }
+      syncHidden();
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !input.value && idx > 0) {
+        digits[idx - 1].focus();
+        digits[idx - 1].value = '';
+        syncHidden();
+      }
+    });
+
+    input.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+      pasted.split('').forEach((ch, i) => {
+        if (digits[idx + i]) digits[idx + i].value = ch;
+      });
+      const next = Math.min(idx + pasted.length, digits.length - 1);
+      digits[next].focus();
+      syncHidden();
+    });
+  });
+
+  function syncHidden() {
+    hidden.value = Array.from(digits).map(d => d.value).join('');
+  }
+
+  // Pre-fill if server returned value (validation failure re-render)
+  const savedOtp = '{{ request.POST.otp_code|default:"" }}';
+  if (savedOtp.length === 6) {
+    savedOtp.split('').forEach((ch, i) => { if (digits[i]) digits[i].value = ch; });
+    syncHidden();
+  }
+
+  // ── Resend countdown ────────────────────────────────────────────
+  let countdown = parseInt('{{ seconds_until_resend|default:0 }}', 10);
+
+  function startCountdown(secs) {
+    countdown = secs;
+    resendBtn.disabled = true;
+    tick();
+  }
+
+  function tick() {
+    if (countdown > 0) {
+      resendTimer.textContent = `(${countdown}s)`;
+      countdown--;
+      setTimeout(tick, 1000);
+    } else {
+      resendTimer.textContent = '';
+      resendBtn.disabled = false;
+    }
+  }
+
+  if (countdown > 0) {
+    startCountdown(countdown);
+  } else {
+    resendBtn.disabled = false;
+  }
+
+  // ── Resend via fetch ────────────────────────────────────────────
+  resendBtn.addEventListener('click', () => {
+    resendBtn.disabled = true;
+    fetch("{% url 'accounts:resend_otp' %}", {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': '{{ csrf_token }}',
+        'Content-Type': 'application/json',
+      },
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok) {
+        startCountdown(60);
+        // Clear existing digit inputs so user enters fresh code
+        digits.forEach(d => d.value = '');
+        hidden.value = '';
+        digits[0].focus();
+      } else {
+        alert(data.error || 'Could not resend. Please try again.');
+        resendBtn.disabled = false;
+      }
+    })
+    .catch(() => {
+      resendBtn.disabled = false;
+    });
+  });
+</script>
+{% endblock %}

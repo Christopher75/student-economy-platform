@@ -66,10 +66,14 @@
               <input type="email" name="email" id="id_email"
                      class="form-control{% if form.email.errors %} is-invalid{% endif %}"
                      value="{{ form.email.value|default:'' }}"
-                     placeholder="your@university.ac.ug" required>
-              <div class="form-text">Use your official university email if possible.</div>
+                     placeholder="cd121356@students.cavendish.ac.ug" required>
+              <div class="form-text">Must be your <strong>@students.cavendish.ac.ug</strong> address.</div>
+              <div id="emailDomainError" class="text-danger small mt-1" style="display:none;">
+                <i class="bi bi-exclamation-circle-fill me-1"></i>
+                Only <strong>@students.cavendish.ac.ug</strong> email addresses are accepted.
+              </div>
               {% if form.email.errors %}
-                <div class="invalid-feedback">{{ form.email.errors|join:", " }}</div>
+                <div class="invalid-feedback d-block">{{ form.email.errors|join:", " }}</div>
               {% endif %}
             </div>
 
@@ -79,7 +83,7 @@
               <input type="text" name="student_id" id="id_student_id"
                      class="form-control{% if form.student_id.errors %} is-invalid{% endif %}"
                      value="{{ form.student_id.value|default:'' }}"
-                     placeholder="e.g. 162-912" required>
+                     placeholder="e.g. cd121356" required>
               {% if form.student_id.errors %}
                 <div class="invalid-feedback">{{ form.student_id.errors|join:", " }}</div>
               {% endif %}
@@ -127,11 +131,15 @@
 
             <!-- Phone -->
             <div class="col-12">
-              <label for="id_phone_number" class="form-label fw-600">Phone Number <span class="text-danger">*</span></label>
+              <label for="id_phone_number" class="form-label fw-600">
+                Phone Number
+                <span class="text-muted fw-400 ms-1" style="font-size:.82rem;">(optional)</span>
+              </label>
               <input type="tel" name="phone_number" id="id_phone_number"
                      class="form-control{% if form.phone_number.errors %} is-invalid{% endif %}"
                      value="{{ form.phone_number.value|default:'' }}"
-                     placeholder="+256 700 000 000" required>
+                     placeholder="+256 700 000 000">
+              <div class="form-text">Your phone number is used for account security. SMS verification will be available soon.</div>
               {% if form.phone_number.errors %}
                 <div class="invalid-feedback">{{ form.phone_number.errors|join:", " }}</div>
               {% endif %}
@@ -188,8 +196,7 @@
             </label>
           </div>
 
-          <button type="submit" class="btn btn-primary w-100 fw-600 py-2"
-                  onclick="this.disabled=true;this.innerHTML='<span class=\'spinner-border spinner-border-sm me-2\'></span>Creating account...';this.form.submit();">
+          <button type="submit" id="submitBtn" class="btn btn-primary w-100 fw-600 py-2">
             <i class="bi bi-rocket-takeoff me-2"></i>Create My Account
           </button>
         </form>
@@ -234,5 +241,30 @@
   }
   togglePw('id_password1', 'togglePw1');
   togglePw('id_password2', 'togglePw2');
+
+  // ── Email domain gate ─────────────────────────────────────────────
+  const ALLOWED_DOMAIN = 'students.cavendish.ac.ug';
+  const emailInput  = document.getElementById('id_email');
+  const domainError = document.getElementById('emailDomainError');
+  const submitBtn   = document.getElementById('submitBtn');
+
+  function validateEmailDomain() {
+    const val = emailInput.value.trim().toLowerCase();
+    const invalid = val.length > 0 && !val.endsWith('@' + ALLOWED_DOMAIN);
+    domainError.style.display = invalid ? 'block' : 'none';
+    emailInput.classList.toggle('is-invalid', invalid);
+    submitBtn.disabled = invalid;
+  }
+
+  emailInput.addEventListener('blur',  validateEmailDomain);
+  emailInput.addEventListener('input', validateEmailDomain);
+
+  // On submit: spin the button and prevent double-click
+  document.getElementById('registerForm').addEventListener('submit', function(e) {
+    validateEmailDomain();
+    if (submitBtn.disabled) { e.preventDefault(); return; }
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating account…';
+  });
 </script>
 {% endblock %}

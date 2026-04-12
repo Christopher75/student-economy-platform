@@ -1,0 +1,13 @@
+Hello {{ user.full_name }},
+
+Your identity verification was not approved.
+
+Reason: {{ reason }}
+
+Please log in to the platform and resubmit with clearer photos.
+Make sure both your student ID card and your selfie are clearly visible and well-lit.
+
+If you need help, contact support through the platform.
+
+The Student Economy Platform Team
+student-economy-platform.onrender.com

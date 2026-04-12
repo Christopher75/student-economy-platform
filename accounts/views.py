@@ -1,21 +1,59 @@
+import json
+import os
+from datetime import timedelta
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import PasswordResetView as BasePasswordResetView
+from django.contrib import messages as django_messages
 from django.contrib import messages
 from django.views import View
 from django.views.generic import TemplateView
 from django.utils.decorators import method_decorator
-from django.core.mail import send_mail
+from django.utils import timezone
+from django.core.mail import send_mail, EmailMultiAlternatives
 from django.conf import settings
 from django.urls import reverse
 from django.db.models import Count, Q
+from django.http import JsonResponse, Http404, FileResponse, HttpResponse
+from django.template.loader import render_to_string
 
-from .models import EmailVerificationToken, SubscriptionPayment
-from .forms import RegistrationForm, EmailLoginForm, ProfileEditForm, StudentPasswordChangeForm
+from .models import EmailVerificationToken, EmailOTPVerification, SubscriptionPayment, _generate_otp, _hash_otp
+from .forms import (
+    RegistrationForm, EmailLoginForm, ProfileEditForm,
+    StudentPasswordChangeForm, IdentityVerificationForm,
+)
 
 User = get_user_model()
+
+
+# ---------------------------------------------------------------------------
+# OTP email sending helper
+# ---------------------------------------------------------------------------
+
+def _send_otp_email(user, otp_code):
+    """Send the 6-digit OTP to the user's email. Returns True on success."""
+    subject = 'Verify your Student Economy Platform account'
+    context = {
+        'user': user,
+        'otp_code': otp_code,
+    }
+    text_body = render_to_string('accounts/emails/otp_email.txt', context)
+    html_body = render_to_string('accounts/emails/otp_email.html', context)
+    try:
+        msg = EmailMultiAlternatives(
+            subject=subject,
+            body=text_body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[user.email],
+        )
+        msg.attach_alternative(html_body, 'text/html')
+        msg.send(fail_silently=False)
+        return True
+    except Exception:
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -38,124 +76,198 @@ class RegisterView(View):
         if form.is_valid():
             user = form.save(commit=False)
             user.is_active = True
-            # In development (DEBUG=True), auto-verify email so users can log in immediately
-            if settings.DEBUG:
-                user.is_email_verified = True
-                user.verification_status = 'approved'
-                user.is_verified = True
+            user.is_email_verified = False
+            user.verification_status = 'unverified'
+            user.is_verified = False
+            # Capture registration IP
+            x_forwarded = request.META.get('HTTP_X_FORWARDED_FOR', '')
+            if x_forwarded:
+                user.registration_ip = x_forwarded.split(',')[0].strip()
+            else:
+                user.registration_ip = request.META.get('REMOTE_ADDR', '')
             user.save()
 
-            if settings.DEBUG:
-                messages.success(
-                    request,
-                    'Account created successfully! You can now log in.',
-                )
-                return redirect('accounts:login')
+            # Create OTP record and send email
+            plain_otp = _generate_otp()
+            now = timezone.now()
+            EmailOTPVerification.objects.filter(user=user).delete()
+            EmailOTPVerification.objects.create(
+                user=user,
+                otp_hash=_hash_otp(plain_otp),
+                otp_created_at=now,
+                otp_expires_at=now + timedelta(minutes=15),
+            )
+            _send_otp_email(user, plain_otp)
 
-            # Production: attempt to send verification email
-            token_obj = EmailVerificationToken.objects.create(user=user)
-            email_sent = self._send_verification_email(request, user, token_obj.token)
-
-            if email_sent:
-                messages.success(
-                    request,
-                    'Account created! Please check your email to verify your address before logging in.',
-                )
-            else:
-                # Email failed — auto-verify so the user can still log in
-                user.is_email_verified = True
-                user.verification_status = 'approved'
-                user.is_verified = True
-                user.save(update_fields=['is_email_verified', 'verification_status', 'is_verified'])
-                messages.success(
-                    request,
-                    'Account created successfully! You can now log in.',
-                )
-            return redirect('accounts:login')
+            # Store user pk in session so the OTP page knows who is verifying
+            request.session['pending_verify_user_id'] = user.pk
+            return redirect('accounts:verify_email_otp')
 
         messages.error(request, 'Please correct the errors below.')
         return render(request, self.template_name, {'form': form})
 
-    @staticmethod
-    def _send_verification_email(request, user, token):
-        """Returns True if email was sent successfully, False otherwise."""
-        verification_url = request.build_absolute_uri(
-            reverse('accounts:verify_email', kwargs={'token': str(token)})
-        )
-        subject = 'Verify your Student Economy Platform email'
-        message = (
-            f"Hi {user.display_name},\n\n"
-            f"Welcome to the Student Economy Platform!\n\n"
-            f"Please click the link below to verify your email address:\n"
-            f"{verification_url}\n\n"
-            f"This link is valid for 3 days.\n\n"
-            f"If you did not register, please ignore this email.\n\n"
-            f"— The Student Economy Platform Team"
-        )
-        try:
-            send_mail(
-                subject,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
-                fail_silently=False,
-            )
-            return True
-        except BaseException:
-            # Catches SMTP errors, timeouts, and worker signals
-            return False
-
 
 # ---------------------------------------------------------------------------
-# Email Verification
+# Email OTP Verification
 # ---------------------------------------------------------------------------
 
-def verify_email(request, token):
-    token_obj = get_object_or_404(EmailVerificationToken, token=token)
+def verify_email_otp(request):
+    """
+    GET  — show the 6-digit OTP entry page.
+    POST — check the submitted OTP and either verify or reject.
+    """
+    # Resolve which user is verifying
+    user_pk = request.session.get('pending_verify_user_id')
+    if not user_pk and request.user.is_authenticated and not request.user.is_email_verified:
+        user_pk = request.user.pk
 
-    if not token_obj.is_valid():
-        messages.error(
-            request,
-            'This verification link has expired or has already been used. '
-            'Please request a new one.',
-        )
+    if not user_pk:
         return redirect('accounts:login')
 
+    user = get_object_or_404(User, pk=user_pk)
+
+    if user.is_email_verified:
+        # Already done — if logged in, send to verify-identity; else to login
+        if request.user.is_authenticated:
+            return redirect('accounts:verify_identity')
+        return redirect('accounts:login')
+
+    # Ensure an OTP record exists
+    otp_obj, _ = EmailOTPVerification.objects.get_or_create(
+        user=user,
+        defaults={
+            'otp_hash': '',
+            'otp_created_at': timezone.now(),
+            'otp_expires_at': timezone.now() + timedelta(minutes=15),
+        }
+    )
+
+    # Mask email: first 2 chars + *** + @domain
+    email_parts = user.email.split('@')
+    masked_email = email_parts[0][:2] + '***@' + email_parts[1]
+
+    context = {
+        'masked_email': masked_email,
+        'otp_obj': otp_obj,
+        'seconds_until_resend': otp_obj.seconds_until_resend(),
+    }
+
+    if request.method == 'GET':
+        return render(request, 'accounts/verify_email_otp.html', context)
+
+    # POST — check OTP
+    submitted = request.POST.get('otp_code', '').strip()
+    if len(submitted) != 6 or not submitted.isdigit():
+        context['error'] = 'Please enter the full 6-digit code.'
+        return render(request, 'accounts/verify_email_otp.html', context)
+
+    result = otp_obj.check_otp(submitted)
+
+    if result == 'ok':
+        user.is_email_verified = True
+        user.save(update_fields=['is_email_verified'])
+        # Clear session marker
+        request.session.pop('pending_verify_user_id', None)
+        # Log the user in
+        if not request.user.is_authenticated:
+            user.backend = 'django.contrib.auth.backends.ModelBackend'
+            login(request, user)
+        messages.success(request, 'Your email is verified. Welcome to the platform.')
+        return redirect('accounts:verify_identity')
+
+    if result == 'locked':
+        until = otp_obj.locked_until
+        context['error'] = (
+            f'Too many incorrect attempts. Please wait 30 minutes or request a new code.'
+        )
+    elif result == 'expired':
+        context['error'] = 'This code has expired. Request a new one below.'
+    elif result == 'wrong':
+        remaining = otp_obj.remaining_attempts()
+        if remaining == 0:
+            context['error'] = (
+                'Too many incorrect attempts. Your account is temporarily locked for 30 minutes.'
+            )
+        else:
+            context['error'] = (
+                f'Incorrect code. {remaining} attempt{"s" if remaining != 1 else ""} remaining before your account is temporarily locked.'
+            )
+    else:
+        context['error'] = 'This code is no longer valid. Please request a new one.'
+
+    context['otp_obj'] = otp_obj
+    context['seconds_until_resend'] = otp_obj.seconds_until_resend()
+    return render(request, 'accounts/verify_email_otp.html', context)
+
+
+def resend_otp(request):
+    """POST-only: generate a new OTP and resend. Returns JSON."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'Method not allowed'}, status=405)
+
+    user_pk = request.session.get('pending_verify_user_id')
+    if not user_pk and request.user.is_authenticated:
+        user_pk = request.user.pk
+
+    if not user_pk:
+        return JsonResponse({'ok': False, 'error': 'Session expired. Please register again.'}, status=400)
+
+    user = get_object_or_404(User, pk=user_pk)
+
+    if user.is_email_verified:
+        return JsonResponse({'ok': False, 'error': 'Email is already verified.'}, status=400)
+
+    otp_obj = getattr(user, 'email_otp', None)
+    if not otp_obj:
+        return JsonResponse({'ok': False, 'error': 'No verification record found.'}, status=400)
+
+    if otp_obj.resend_count >= 5:
+        return JsonResponse({
+            'ok': False,
+            'error': 'You have requested too many codes. Please contact support if you are having trouble.',
+        }, status=429)
+
+    if not otp_obj.can_resend():
+        wait = otp_obj.seconds_until_resend()
+        return JsonResponse({'ok': False, 'error': f'Please wait {wait} seconds before requesting a new code.'}, status=429)
+
+    plain_otp = otp_obj.refresh_otp()
+    _send_otp_email(user, plain_otp)
+
+    return JsonResponse({
+        'ok': True,
+        'resend_count': otp_obj.resend_count,
+        'seconds_until_next': 60,
+    })
+
+
+# Legacy link-based email verification (kept for backward compatibility)
+def verify_email(request, token):
+    token_obj = get_object_or_404(EmailVerificationToken, token=token)
+    if not token_obj.is_valid():
+        messages.error(request, 'This verification link has expired or has already been used.')
+        return redirect('accounts:login')
     user = token_obj.user
     if user.is_email_verified:
         messages.info(request, 'Your email is already verified. You can log in.')
         return redirect('accounts:login')
-
     user.is_email_verified = True
     user.save(update_fields=['is_email_verified'])
-
     token_obj.is_used = True
     token_obj.save(update_fields=['is_used'])
-
-    messages.success(
-        request,
-        'Email verified successfully! You can now log in to your account.',
-    )
+    messages.success(request, 'Email verified! You can now log in.')
     return redirect('accounts:login')
 
 
 def resend_verification(request):
-    """Allow a logged-in but unverified user to request a new verification email."""
+    """Legacy resend — now redirects to OTP page."""
     if not request.user.is_authenticated:
         return redirect('accounts:login')
-
-    user = request.user
-    if user.is_email_verified:
+    if request.user.is_email_verified:
         messages.info(request, 'Your email is already verified.')
         return redirect('accounts:dashboard')
-
-    # Invalidate old tokens
-    EmailVerificationToken.objects.filter(user=user, is_used=False).update(is_used=True)
-    token_obj = EmailVerificationToken.objects.create(user=user)
-    RegisterView._send_verification_email(request, user, token_obj.token)
-
-    messages.success(request, 'A new verification email has been sent. Please check your inbox.')
-    return redirect('accounts:dashboard')
+    request.session['pending_verify_user_id'] = request.user.pk
+    return redirect('accounts:verify_email_otp')
 
 
 # ---------------------------------------------------------------------------
@@ -650,3 +762,230 @@ def admin_payment_reject(request, pk):
 
     messages.success(request, f'Payment {payment.reference_code} rejected.')
     return redirect('accounts:admin_payments')
+
+
+# ---------------------------------------------------------------------------
+# Identity (Document) Verification
+# ---------------------------------------------------------------------------
+
+@login_required
+def verify_identity(request):
+    """
+    Show the two-photo upload form. Only accessible to email-verified users
+    who have not yet submitted or were rejected.
+    """
+    user = request.user
+
+    if not user.is_email_verified:
+        return redirect('accounts:verify_email_otp')
+
+    # Already submitted or approved — show status page
+    if user.verification_status == 'pending':
+        return render(request, 'accounts/verify_identity_submitted.html', {'pending': True})
+    if user.verification_status == 'verified':
+        return redirect('accounts:dashboard')
+
+    # unverified or rejected — show upload form
+    form = IdentityVerificationForm()
+    rejected = user.verification_status == 'rejected'
+
+    if request.method == 'POST':
+        form = IdentityVerificationForm(request.POST, request.FILES)
+        if form.is_valid():
+            user.id_card_photo = form.cleaned_data['id_card_photo']
+            user.selfie_photo = form.cleaned_data['selfie_photo']
+            user.verification_status = 'pending'
+            user.verification_submitted_at = timezone.now()
+            user.verification_rejection_reason = ''
+            user.save(update_fields=[
+                'id_card_photo', 'selfie_photo',
+                'verification_status', 'verification_submitted_at',
+                'verification_rejection_reason',
+            ])
+            # Notify admins
+            try:
+                from notifications.models import Notification
+                for admin in User.objects.filter(is_staff=True):
+                    Notification.create(
+                        user=admin,
+                        notification_type='info',
+                        title='New Verification Submission',
+                        message=f'{user.display_name} has submitted identity documents for review.',
+                        action_url=reverse('accounts:admin_verification'),
+                    )
+            except Exception:
+                pass
+            return render(request, 'accounts/verify_identity_submitted.html', {'pending': True})
+
+    return render(request, 'accounts/verify_identity.html', {
+        'form': form,
+        'rejected': rejected,
+        'rejection_reason': user.verification_rejection_reason,
+    })
+
+
+@_staff_required
+def serve_verification_photo(request, photo_type, pk):
+    """Serve a verification photo securely — staff only."""
+    user = get_object_or_404(User, pk=pk)
+    if photo_type == 'id_card':
+        field = user.id_card_photo
+    elif photo_type == 'selfie':
+        field = user.selfie_photo
+    else:
+        raise Http404
+
+    if not field:
+        raise Http404
+
+    # If Cloudinary is configured, generate a signed URL
+    cloudinary_configured = bool(getattr(settings, 'CLOUDINARY_CLOUD_NAME', ''))
+    if cloudinary_configured:
+        try:
+            import cloudinary
+            import cloudinary.utils
+            public_id = field.name.rsplit('.', 1)[0]
+            url, _ = cloudinary.utils.cloudinary_url(
+                public_id,
+                type='private',
+                sign_url=True,
+                expires_at=int(timezone.now().timestamp()) + 300,
+            )
+            return redirect(url)
+        except Exception:
+            raise Http404
+
+    # Local storage — serve via FileResponse
+    try:
+        from django.conf import settings as s
+        import mimetypes
+        path = os.path.join(s.MEDIA_ROOT, field.name)
+        content_type, _ = mimetypes.guess_type(path)
+        return FileResponse(open(path, 'rb'), content_type=content_type or 'image/jpeg')
+    except FileNotFoundError:
+        raise Http404
+
+
+# ---------------------------------------------------------------------------
+# Admin Verification Review
+# ---------------------------------------------------------------------------
+
+@_staff_required
+def admin_verification_list(request):
+    """List all pending verification submissions side-by-side."""
+    status_filter = request.GET.get('status', 'pending')
+    users = User.objects.exclude(verification_status='unverified').select_related()
+    if status_filter in ('pending', 'verified', 'rejected'):
+        users = users.filter(verification_status=status_filter)
+    return render(request, 'admin_panel/verification.html', {
+        'users': users,
+        'status_filter': status_filter,
+    })
+
+
+@_staff_required
+def admin_verification_approve(request, pk):
+    """Approve a verification submission."""
+    if request.method != 'POST':
+        return redirect('accounts:admin_verification')
+
+    user = get_object_or_404(User, pk=pk)
+    user.verification_status = 'verified'
+    user.is_verified = True
+    user.verification_reviewed_at = timezone.now()
+    user.verification_reviewed_by = request.user
+    user.save(update_fields=[
+        'verification_status', 'is_verified',
+        'verification_reviewed_at', 'verification_reviewed_by',
+    ])
+
+    # In-app notification
+    try:
+        from notifications.models import Notification
+        Notification.create(
+            user=user,
+            notification_type='verification_approved',
+            title='Identity Verified!',
+            message=(
+                'Your identity has been verified. Your Verified Student badge is now active '
+                'on your profile and all your listings.'
+            ),
+            action_url=reverse('accounts:profile', kwargs={'username': user.username}),
+        )
+    except Exception:
+        pass
+
+    # Email notification
+    try:
+        subject = 'You are now a Verified Student'
+        ctx = {'user': user}
+        text_body = render_to_string('accounts/emails/identity_verified.txt', ctx)
+        html_body = render_to_string('accounts/emails/identity_verified.html', ctx)
+        msg = EmailMultiAlternatives(
+            subject=subject, body=text_body,
+            from_email=settings.DEFAULT_FROM_EMAIL, to=[user.email],
+        )
+        msg.attach_alternative(html_body, 'text/html')
+        msg.send(fail_silently=True)
+    except Exception:
+        pass
+
+    messages.success(request, f'{user.display_name} is now a Verified Student.')
+    return redirect('accounts:admin_verification')
+
+
+@_staff_required
+def admin_verification_reject(request, pk):
+    """Reject a verification submission with a reason."""
+    if request.method != 'POST':
+        return redirect('accounts:admin_verification')
+
+    user = get_object_or_404(User, pk=pk)
+    reason = request.POST.get('reason', '').strip()
+    notes = request.POST.get('notes', '').strip()
+    full_reason = reason + (f' — {notes}' if notes else '')
+
+    user.verification_status = 'rejected'
+    user.is_verified = False
+    user.verification_reviewed_at = timezone.now()
+    user.verification_reviewed_by = request.user
+    user.verification_rejection_reason = full_reason
+    user.save(update_fields=[
+        'verification_status', 'is_verified',
+        'verification_reviewed_at', 'verification_reviewed_by',
+        'verification_rejection_reason',
+    ])
+
+    # In-app notification
+    try:
+        from notifications.models import Notification
+        Notification.create(
+            user=user,
+            notification_type='verification_rejected',
+            title='Identity Verification Not Approved',
+            message=(
+                f'Your identity verification was not approved. Reason: {full_reason}. '
+                'Please resubmit with clearer photos. If you need help, contact support.'
+            ),
+            action_url=reverse('accounts:verify_identity'),
+        )
+    except Exception:
+        pass
+
+    # Email
+    try:
+        subject = 'Your identity verification was not approved'
+        ctx = {'user': user, 'reason': full_reason}
+        text_body = render_to_string('accounts/emails/identity_rejected.txt', ctx)
+        html_body = render_to_string('accounts/emails/identity_rejected.html', ctx)
+        msg = EmailMultiAlternatives(
+            subject=subject, body=text_body,
+            from_email=settings.DEFAULT_FROM_EMAIL, to=[user.email],
+        )
+        msg.attach_alternative(html_body, 'text/html')
+        msg.send(fail_silently=True)
+    except Exception:
+        pass
+
+    messages.warning(request, f'Verification rejected for {user.display_name}.')
+    return redirect('accounts:admin_verification')

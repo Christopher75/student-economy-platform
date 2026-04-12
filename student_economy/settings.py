@@ -65,6 +65,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'accounts.middleware.UpdateLastSeenMiddleware',
+    'accounts.middleware.EmailVerificationMiddleware',
 ]
 
 ROOT_URLCONF = 'student_economy.urls'
