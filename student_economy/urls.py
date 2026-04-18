@@ -16,7 +16,10 @@ urlpatterns = [
     path('bookings/', include('skills.booking_urls')),
     path('messages/', include('messaging.urls')),
     path('notifications/', include('notifications.urls')),
+    path('chatbot/', include('chatbot.urls')),
+
 ]
+
 
 # Serve media files in development
 if settings.DEBUG:

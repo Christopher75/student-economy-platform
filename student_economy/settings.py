@@ -23,6 +23,7 @@ CLOUDINARY_API_SECRET = config('CLOUDINARY_API_SECRET', default='')
 PLATFORM_MTN_NUMBER = config('PLATFORM_MTN_NUMBER', default='077X XXX XXX')
 PLATFORM_AIRTEL_NUMBER = config('PLATFORM_AIRTEL_NUMBER', default='075X XXX XXX')
 
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -37,6 +38,7 @@ INSTALLED_APPS = [
     'crispy_bootstrap5',
     'widget_tweaks',
     'django_cleanup.apps.CleanupConfig',
+    'channels',       
     # Local apps
     'accounts',
     'marketplace',
@@ -44,6 +46,7 @@ INSTALLED_APPS = [
     'messaging',
     'notifications',
     'core',
+    'chatbot',        
 ]
 
 # Configure Cloudinary SDK when credentials are present
@@ -201,3 +204,13 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+
+ASGI_APPLICATION = 'student_economy.asgi.application'
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
+
+ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
